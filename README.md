@@ -42,14 +42,23 @@ playmate-match/
 
 ## 二、把網址填進網站
 
-打開 `index.html`，最上面有一塊設定區，只改這兩行：
+打開 `index.html`，最上面有一塊設定區，只改 `endpoint` 這一行：
 
 ```js
 const CONFIG = {
   endpoint: 'https://script.google.com/macros/s/AKfycb................/exec',
-  teacherKey: '改成你的密碼'   // 要和 apps-script.gs 的 TEACHER_KEY 一模一樣
+  teacherKey: ''   // ⚠️ 保持空白，不要填密碼
 };
 ```
+
+> ### ⚠️ `teacherKey` 為什麼要留空
+>
+> 這個網站放在**公開的 GitHub repo**，任何人按瀏覽器的「檢視網頁原始碼」都看得到 `index.html` 的每一行。
+> 密碼一旦寫進去，等於公開張貼，別人就能用 `?action=list&key=密碼` 讀走全班資料，
+> 包括學生私下寫的「避免同組」與原因。
+>
+> 正確做法是留空，老師第一次進「老師專區」時在密碼欄輸入一次，
+> 瀏覽器會存在本機（localStorage），同一台裝置之後不用再輸入。
 
 > `endpoint` 留空時網站會進入**示範模式**：畫面全部正常，但送出的答案只會留在那台裝置上。
 

@@ -301,10 +301,14 @@ label.filebtn input{position:absolute;width:1px;height:1px;opacity:0;pointer-eve
    詳細步驟請看同資料夾的 README.md
    ========================================================================== */
 const CONFIG = {
-  // Google Apps Script 部署後得到的「網頁應用程式網址」，長得像
-  // https://script.google.com/macros/s/AKfycb.../exec
-  endpoint: '',
-  // 老師專區的密碼，要和 Apps Script 裡的 TEACHER_KEY 一模一樣
+  // Google Apps Script 部署後得到的「網頁應用程式網址」
+  endpoint: 'https://script.google.com/macros/s/AKfycbwPMaKlAkSvAlYaCZyK4aN_16nFG-0vOKBlpTDzRHC7blw0OgSKi6t6wBmdh6Xyo9aR/exec',
+
+  // ⚠️ 這裡請保持空白，不要填密碼。
+  // 這個網站放在公開的 GitHub 上，任何人按「檢視原始碼」都看得到這一行。
+  // 密碼一旦寫在這裡，別人就能讀到學生「避免同組」的保密內容。
+  // 正確做法：老師在「老師專區」的密碼欄手動輸入一次，瀏覽器會記住，
+  // 之後同一台裝置不用再輸入。
   teacherKey: ''
 };
 /* ========================================================================== */
