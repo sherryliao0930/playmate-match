@@ -264,6 +264,29 @@ textarea,input[type=text],input[type=password],input[type=url]{width:100%;font:i
 .planblk{margin-top:7px}
 .planblk i{display:block;font-style:normal;font-weight:800;font-size:.78rem;letter-spacing:.02em}
 .planblk span{display:block;color:var(--ink-soft);font-size:.8rem;line-height:1.55}
+/* ---- 關係一覽 ---- */
+.relgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px;margin-top:14px}
+.relpark{background:var(--surface-2);border:2.5px solid var(--line);border-radius:16px;padding:14px;min-width:0}
+.relsec{margin-top:14px}
+.relsec:first-of-type{margin-top:10px}
+.relsec h4{font-family:var(--display);font-size:.98rem;font-weight:800;display:flex;align-items:center;
+  gap:6px;flex-wrap:wrap}
+.relsec h4 em{font-style:normal;font-size:.78rem;color:var(--ink-faint);font-weight:700;font-family:var(--body)}
+.relnote{font-size:.78rem;color:var(--ink-faint);margin-top:7px;line-height:1.5}
+.relempty{font-size:.85rem;color:var(--ink-faint);margin-top:8px}
+.pairs{display:flex;flex-direction:column;gap:6px;margin-top:9px}
+.pair{display:flex;align-items:center;gap:7px;flex-wrap:wrap;background:var(--surface);
+  border:2px solid var(--line);border-radius:11px;padding:6px 10px;font-size:.88rem}
+.pair.ok{border-left:7px solid var(--mint)}
+.pair.one{border-left:7px solid var(--ink-faint)}
+.pair.avoid{border-left:7px solid var(--red);flex-direction:column;align-items:stretch;gap:4px}
+.pairtop{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.pchip{font-weight:700;background:var(--surface-2);border:1.5px solid var(--line);
+  border-radius:7px;padding:1px 8px;font-size:.86rem}
+.arrow{font-weight:800;color:var(--ink-faint)}
+.dir{font-size:.74rem;font-weight:700;color:var(--ink-faint);margin-left:auto}
+.why{font-size:.8rem;color:var(--ink-soft);line-height:1.5}
+.relsec details summary{cursor:pointer;font-size:.86rem;font-weight:700;color:var(--blue);margin-top:8px}
 .tablewrap{overflow-x:auto;margin-top:13px;border:2.5px solid var(--line);border-radius:15px}
 table{border-collapse:collapse;width:100%;font-size:.87rem;min-width:640px}
 th,td{text-align:left;padding:8px 11px;border-bottom:2px solid var(--surface-2);vertical-align:top}
@@ -533,6 +556,37 @@ function groupInfo(g,park){
   const rides=[];
   plan.forEach(b=>b.rides.slice(0,2).forEach(r=>rides.push({cat:b.cat,r})));
   return {shared,main,liked,plan,avg,wish,wishTotal,clash,rides};
+}
+/* 全班互選關係：雙向、單向、希望避免同組 */
+function relations(entries){
+  const byS=Object.fromEntries(entries.map(e=>[e.seat,e]));
+  const res={};
+  PARK_LIST.forEach(p=>{
+    const mutual=[], oneway=[];
+    entries.forEach(a=>(a.mates[p.key]||[]).forEach(s=>{
+      const b=byS[s]; if(!b) return;
+      if((b.mates[p.key]||[]).includes(a.seat)){ if(a.seat<b.seat) mutual.push([a,b]); }
+      else oneway.push([a,b]);
+    }));
+    const sk=(x,y)=>x[0].seat-y[0].seat||x[1].seat-y[1].seat;
+    res[p.key]={mutual:mutual.sort(sk), oneway:oneway.sort(sk)};
+  });
+  const avoid=[], seen=new Set();
+  entries.forEach(a=>(a.avoid||[]).forEach(s=>{
+    const b=byS[s]; if(!b) return;
+    const k=Math.min(a.seat,b.seat)+'-'+Math.max(a.seat,b.seat);
+    if(seen.has(k)) return; seen.add(k);
+    const both=(b.avoid||[]).includes(a.seat);
+    avoid.push({a,b,both,
+      whyA:(a.why&&a.why[b.seat])||'', whyB:both?((b.why&&b.why[a.seat])||''):''});
+  }));
+  res.avoid=avoid.sort((x,y)=>x.a.seat-y.a.seat);
+  // 人氣：被幾個人點名（兩園合計，不重複算同一人）
+  res.pop=entries.map(e=>({e,
+    n:entries.filter(o=>o.seat!==e.seat&&
+      ((o.mates.nine||[]).includes(e.seat)||(o.mates.jan||[]).includes(e.seat))).length}))
+    .sort((x,y)=>y.n-x.n||x.e.seat-y.e.seat);
+  return res;
 }
 /* 全班「想先分開玩」有多少真的被分開了 */
 function apartStats(entries,groups){
@@ -865,6 +919,8 @@ function teacherView(){
     <p class="hint">沒網路或臨時要改，也可以把 Google 試算表「下載成 CSV」後從這裡匯入。</p>
   </div>
 
+  ${done?relationsCard(entries):''}
+
   ${groupsHTML}
 
   ${done?`<div class="card">
@@ -895,6 +951,62 @@ function teacherView(){
     </div>
     <p class="hint">CSV 以 UTF-8 BOM 輸出，Excel 或 Google 試算表開啟都不會亂碼。</p>
   </div>`:''}`;
+}
+
+/* ============ 關係一覽 ============ */
+function relationsCard(entries){
+  const R=relations(entries);
+  const chip=m=>`<b class="pchip">${m.seat} ${esc(m.name)}</b>`;
+  const noOne=R.pop.filter(x=>x.n===0);
+  const parkBlock=p=>{
+    const r=R[p.key];
+    return `<div class="relpark">
+      <div class="parkhead" style="margin-top:0"><span class="tag ${p.cls}">${p.name}</span></div>
+      <div class="relsec">
+        <h4>💞 互相想一起　<em>${r.mutual.length} 對</em></h4>
+        ${r.mutual.length?`<div class="pairs">${r.mutual.map(([a,b])=>
+          `<div class="pair ok">${chip(a)}<span class="arrow">↔</span>${chip(b)}</div>`).join('')}</div>`
+          :'<p class="relempty">目前沒有互選的配對</p>'}
+        <p class="relnote">兩個人都把對方寫進去了，排在同一組兩邊都開心，分組時優先湊在一起。</p>
+      </div>
+      <div class="relsec">
+        <h4>➡️ 單方面想一起　<em>${r.oneway.length} 筆</em></h4>
+        ${r.oneway.length?`<details><summary>展開全部 ${r.oneway.length} 筆</summary>
+          <div class="pairs">${r.oneway.map(([a,b])=>
+            `<div class="pair one">${chip(a)}<span class="arrow">→</span>${chip(b)}</div>`).join('')}</div>
+          </details>`:'<p class="relempty">沒有單方面的點名</p>'}
+        <p class="relnote">左邊的人想跟右邊的人一起，但右邊沒有回選。這很正常，不代表關係不好——
+          分組時權重比互選低，排不進去的話可以留意一下左邊那位的心情。</p>
+      </div>
+    </div>`;
+  };
+  return `<div class="card">
+    <div class="parkhead" style="justify-content:space-between;margin-top:0">
+      <h3 style="font-size:1.15rem;font-weight:800">👥 同學之間的關係</h3>
+      <span class="hint" style="margin:0">想一起玩的對象兩個樂園分開統計</span>
+    </div>
+    <div class="relgrid">${PARK_LIST.map(parkBlock).join('')}</div>
+
+    <div class="relsec" style="margin-top:18px">
+      <h4>🔒 希望避免同組　<em>${R.avoid.length} 對</em>
+        <button class="btn ghost sm" style="margin-left:8px" data-act="togglePrivate">
+          ${state.showPrivate?'🙈 收起':'👁️ 顯示'}</button></h4>
+      ${R.avoid.length?(state.showPrivate?`<div class="pairs">${R.avoid.map(v=>
+        `<div class="pair avoid">
+           <div class="pairtop">${chip(v.a)}<span class="arrow">⇸</span>${chip(v.b)}
+             <span class="dir">${v.both?'雙方都提':'單方提出'}</span></div>
+           <div class="why">${esc(v.a.name)}：${esc(v.whyA||'（未寫原因）')}
+             ${v.both?`<br>${esc(v.b.name)}：${esc(v.whyB||'（未寫原因）')}`:''}</div>
+         </div>`).join('')}</div>`
+        :`<p class="relempty">內容已收起，按「👁️ 顯示」才看得到（${R.avoid.length} 對）</p>`)
+      :'<p class="relempty">沒有人提出要避免同組 🎉</p>'}
+      <p class="relnote">分組時這一條權重最高，幾乎等於硬性條件。學生私下寫給你的，請勿公開或轉述。</p>
+    </div>
+
+    ${noOne.length?`<div class="note bad"><b>沒有被任何人點名的同學（${noOne.length} 位）</b>
+      <div class="miss">${noOne.map(x=>`<span>${x.e.seat} ${esc(x.e.name)}</span>`).join('')}</div>
+      兩個樂園都沒有人選到他們，分組時記得多留意。</div>`:''}
+  </div>`;
 }
 
 /* ============ CSV ============ */
