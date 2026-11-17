@@ -422,18 +422,27 @@ const COURAGE_FACES=[
 
 /* ============ 配對演算法 ============ */
 const APART=(a,b)=>(a.avoid||[]).includes(b.seat)||(b.avoid||[]).includes(a.seat);
-/* 優先順序：① 不想同組＝硬性排除　② 想一起玩　③ 設施類型　④ 膽量（只當平手微調） */
+/* 評分＝「想一起玩」×100 ＋「設施類型與膽量」
+   ① 不想同組：直接判出局（-1000000），任何分組都不能有
+   ② 想一起玩：互選 30、單向 12（×100 後一定壓過所有類型分數的總和）
+   ③ 設施類型重疊：最高 6　④ 膽量接近：最高 2（只在想一起玩相同時才分高下） */
+const PS_CACHE=new WeakMap();
 function pairScore(a,b,park){
-  if(APART(a,b)) return -1000;                 // ① 絕對不排在一起
-  let s=0;
-  const aw=(a.mates[park]||[]).includes(b.seat), bw=(b.mates[park]||[]).includes(a.seat);
-  if(aw&&bw) s+=30; else if(aw||bw) s+=12;     // ② 互選 ＞ 單向，且一定大於類型分數
-  const A=new Set(a.cats), B=new Set(b.cats);
-  let inter=0; A.forEach(x=>{if(B.has(x))inter++});
-  const uni=new Set([...a.cats,...b.cats]).size||1;
-  s+=6*(inter/uni);                            // ③ 設施類型重疊
-  s+=2*(1-Math.abs(a.courage-b.courage)/4);    // ④ 膽量接近
-  return s;
+  let m=PS_CACHE.get(a); if(!m){m=new Map();PS_CACHE.set(a,m);}
+  const key=park+b.seat;
+  if(m.has(key)) return m.get(key);
+  let s;
+  if(APART(a,b)) s=-1000000;
+  else{
+    const aw=(a.mates[park]||[]).includes(b.seat), bw=(b.mates[park]||[]).includes(a.seat);
+    const W=(aw&&bw)?30:((aw||bw)?12:0);
+    const A=new Set(a.cats), B=new Set(b.cats);
+    let inter=0; A.forEach(x=>{if(B.has(x))inter++});
+    const uni=new Set([...a.cats,...b.cats]).size||1;
+    const C=6*(inter/uni)+2*(1-Math.abs(a.courage-b.courage)/4);
+    s=W*100+C;
+  }
+  m.set(key,s); return s;
 }
 const GMIN=2, GMAX=4;                          // 每組人數下限／上限
 /* 先決定要分幾組、每組幾人，讓所有組都落在 2～4 人 */
@@ -454,9 +463,8 @@ function leaderRank(m,g,park,all){
 }
 const withLeader=(g,park,all)=>g.slice().sort((a,b)=>leaderRank(b,g,park,all)-leaderRank(a,g,park,all));
 
-/* 彈性分組：從最合得來的兩人開始長，契合度不夠就停，2～4 人都可以
-   門檻設在「光靠設施類型湊不到」的高度，所以要長大必須有人想一起玩 */
-const FLEX_FLOOR=9.0;
+/* 彈性分組：從最合得來的兩人開始長；要長大必須「有人想一起玩」，光靠設施類型不會長 */
+const FLEX_FLOOR=100;
 function buildFlexible(list,park){
   const pool=list.slice(), groups=[];
   while(pool.length>=GMIN){
@@ -473,14 +481,13 @@ function buildFlexible(list,park){
         const avg=g.reduce((t,m)=>t+pairScore(p,m,park),0)/g.length;
         if(avg>ks){ks=avg;k=idx;}
       });
-      // 剩一個人沒地方去，就直接收進來，避免落單
       if(ks<FLEX_FLOOR && pool.length!==1) break;
       if(ks<FLEX_FLOOR && pool.length===1 && g.length>=GMAX) break;
       g.push(pool.splice(k,1)[0]);
     }
     groups.push(g);
   }
-  pool.forEach(p=>{                             // 最後落單的人
+  pool.forEach(p=>{
     let best=-1,bs=-Infinity;
     groups.forEach((g,i)=>{ if(g.length>=GMAX) return;
       const avg=g.reduce((t,m)=>t+pairScore(p,m,park),0)/g.length;
@@ -489,75 +496,9 @@ function buildFlexible(list,park){
   });
   return groups;
 }
-/* 收尾修復：還排在一起的「避免同組」，試著互換或移走化解 */
-function hasClash(g){
-  for(let i=0;i<g.length;i++)for(let j=i+1;j<g.length;j++) if(APART(g[i],g[j])) return true;
-  return false;
-}
-const groupScore=(g,park)=>{let s=0;
-  for(let i=0;i<g.length;i++)for(let j=i+1;j<g.length;j++) s+=pairScore(g[i],g[j],park);
-  return s;};
-function repairClashes(gs,park){
-  for(let pass=0;pass<6;pass++){
-    let changed=false;
-    for(let i=0;i<gs.length&&!changed;i++){
-      if(!hasClash(gs[i])) continue;
-      for(let x=0;x<gs[i].length&&!changed;x++){
-        const m=gs[i][x];
-        if(!gs[i].some((o,k)=>k!==x&&APART(o,m))) continue;   // 這個人本身沒衝突
-        const rest=gs[i].filter((_,k)=>k!==x);
-        // ① 先試著把他直接移到不衝突、又還有空位的組
-        for(let j=0;j<gs.length&&!changed;j++){
-          if(j===i||gs[j].length>=GMAX||rest.length<GMIN) continue;
-          if(!hasClash(gs[j].concat(m))&&!hasClash(rest)){
-            gs[i]=rest; gs[j]=gs[j].concat(m); changed=true;
-          }
-        }
-        // ② 不行就跟別組的人交換，挑「想一起玩」保留最多的那個換法
-        let best=null;
-        for(let j=0;j<gs.length;j++){
-          if(j===i) continue;
-          for(let y=0;y<gs[j].length;y++){
-            const n=gs[j][y];
-            const gi=rest.concat(n), gj=gs[j].filter((_,k)=>k!==y).concat(m);
-            if(hasClash(gi)||hasClash(gj)) continue;
-            const sc=groupScore(gi,park)+groupScore(gj,park);
-            if(!best||sc>best.sc) best={j,y,gi,gj,sc};
-          }
-        }
-        if(best){ gs[i]=best.gi; gs[best.j]=best.gj; changed=true; }
-      }
-    }
-    if(!changed) break;
-  }
-  return gs.filter(g=>g.length);
-}
-/* 收尾優化：在不製造衝突的前提下互換組員，讓「想一起玩」盡量成真 */
-function polishWishes(gs,park){
-  const total=()=>gs.reduce((t,g)=>t+groupScore(g,park),0);
-  for(let pass=0;pass<8;pass++){
-    let best=null, base=total();
-    for(let i=0;i<gs.length;i++)for(let j=i+1;j<gs.length;j++){
-      for(let x=0;x<gs[i].length;x++)for(let y=0;y<gs[j].length;y++){
-        const gi=gs[i].map((m,k)=>k===x?gs[j][y]:m);
-        const gj=gs[j].map((m,k)=>k===y?gs[i][x]:m);
-        if(hasClash(gi)||hasClash(gj)) continue;
-        const gain=groupScore(gi,park)+groupScore(gj,park)
-                  -groupScore(gs[i],park)-groupScore(gs[j],park);
-        if(gain>0.001&&(!best||gain>best.gain)) best={i,j,gi,gj,gain};
-      }
-    }
-    if(!best) break;
-    gs[best.i]=best.gi; gs[best.j]=best.gj;
-    if(total()<=base) break;
-  }
-  return gs;
-}
-function buildGroups(list,park,pref){
-  if(pref==='flex')
-    return polishWishes(repairClashes(buildFlexible(list,park),park),park).map(g=>withLeader(g,park,list));
-  const pool=list.slice();
-  const groups=[];
+/* 固定人數：依 targetSizes 決定每組幾人 */
+function buildFixed(list,park,pref){
+  const pool=list.slice(), groups=[];
   targetSizes(pool.length,pref).forEach(sz=>{
     if(!pool.length) return;
     if(pool.length<=sz){groups.push(pool.splice(0));return;}
@@ -578,14 +519,89 @@ function buildGroups(list,park,pref){
     }
     groups.push(g);
   });
-  pool.forEach(p=>{                             // 保險：還有剩就塞進最合適的小組
+  pool.forEach(p=>{
     let best=-1,bs=-Infinity;
     groups.forEach((g,i)=>{ if(g.length>=GMAX) return;
       const avg=g.reduce((t,m)=>t+pairScore(p,m,park),0)/g.length;
       if(avg>bs){bs=avg;best=i;}});
     if(best<0) groups.push([p]); else groups[best].push(p);
   });
-  return polishWishes(repairClashes(groups,park),park).map(g=>withLeader(g,park,list));
+  return groups;
+}
+function hasClash(g){
+  for(let i=0;i<g.length;i++)for(let j=i+1;j<g.length;j++) if(APART(g[i],g[j])) return true;
+  return false;
+}
+const clashCount=gs=>gs.reduce((t,g)=>{let c=0;
+  for(let i=0;i<g.length;i++)for(let j=i+1;j<g.length;j++) if(APART(g[i],g[j]))c++;return t+c;},0);
+/* 一組的分數＝兩兩配對分數加總＋「每個人組裡至少有一位自己想要的人」的大獎勵
+   這樣會先確保每個人都有喜歡的人在身邊，再去追求更多互選、最後才看設施類型 */
+const HAS_FRIEND=5000;
+const groupScore=(g,park)=>{let s=0;
+  for(let i=0;i<g.length;i++){
+    for(let j=i+1;j<g.length;j++) s+=pairScore(g[i],g[j],park);
+    const picks=g[i].mates[park]||[];
+    if(g.some((o,k)=>k!==i&&picks.includes(o.seat))) s+=HAS_FRIEND;
+  }
+  return s;};
+/* 局部搜尋：反覆「移一個人」或「兩人互換」，只要總分變高就採用。
+   因為衝突是 -1000000，任何會讓不想同組的人碰在一起的變動都不可能被採用。 */
+function localSearch(gs,park,allowMove){
+  gs=gs.map(g=>g.slice());
+  for(let pass=0;pass<60;pass++){
+    let best=null;
+    const sc=gs.map(g=>groupScore(g,park));
+    for(let i=0;i<gs.length;i++)for(let j=0;j<gs.length;j++){
+      if(i===j) continue;
+      // 移動：i 組的人搬去 j 組
+      if(allowMove && gs[i].length>GMIN && gs[j].length<GMAX){
+        for(let x=0;x<gs[i].length;x++){
+          const gi=gs[i].filter((_,k)=>k!==x), gj=gs[j].concat(gs[i][x]);
+          const gain=groupScore(gi,park)+groupScore(gj,park)-sc[i]-sc[j];
+          if(gain>1e-6&&(!best||gain>best.gain)) best={i,j,gi,gj,gain};
+        }
+      }
+      // 互換（只算一次 i<j）
+      if(i<j){
+        for(let x=0;x<gs[i].length;x++)for(let y=0;y<gs[j].length;y++){
+          const gi=gs[i].map((m,k)=>k===x?gs[j][y]:m);
+          const gj=gs[j].map((m,k)=>k===y?gs[i][x]:m);
+          const gain=groupScore(gi,park)+groupScore(gj,park)-sc[i]-sc[j];
+          if(gain>1e-6&&(!best||gain>best.gain)) best={i,j,gi,gj,gain};
+        }
+      }
+    }
+    if(!best) break;
+    gs[best.i]=best.gi; gs[best.j]=best.gj;
+  }
+  return gs.filter(g=>g.length);
+}
+/* 固定亂數，讓同一份資料每次算出來都一樣 */
+function seededRandom(seed){
+  return ()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);
+    t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};
+}
+const RESTARTS=150;
+function buildGroups(list,park,pref){
+  if(list.length<=GMAX) return [withLeader(list,park,list)];
+  const flex=pref==='flex';
+  const first=flex?buildFlexible(list,park):buildFixed(list,park,pref);
+  const sizes=first.map(g=>g.length);
+  const rnd=seededRandom(list.reduce((t,e)=>t*31+e.seat,7)+(park==='nine'?1:2));
+  let best=null;
+  for(let r=0;r<=RESTARTS;r++){
+    let start;
+    if(r===0) start=first;
+    else{                                       // 隨機打散後重新排，避免卡在局部最佳
+      const sh=list.slice();
+      for(let i=sh.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[sh[i],sh[j]]=[sh[j],sh[i]];}
+      start=[];let k=0;sizes.forEach(n=>{start.push(sh.slice(k,k+n));k+=n;});
+    }
+    const gs=localSearch(start,park,flex);
+    const cl=clashCount(gs), tot=gs.reduce((t,g)=>t+groupScore(g,park),0);
+    if(!best||cl<best.cl||(cl===best.cl&&tot>best.tot)) best={gs,cl,tot};
+  }
+  return best.gs.map(g=>withLeader(g,park,list));
 }
 /* 以座號保存分組，讓老師的手動調整可以留著。每組第一位就是組長。 */
 function ensureGroups(park,entries){
@@ -599,7 +615,7 @@ function ensureGroups(park,entries){
     const placed=new Set(gs.flat());
     entries.filter(e=>!placed.has(e.seat)).forEach(e=>{   // 新交的人補進最合適的組
       let best=-1,bs=-Infinity;
-      gs.forEach((g,i)=>{ if(g.length>=GMAX) return;
+      gs.forEach((g,i)=>{ if(g.length>=GMAX||g.some(s=>byS[s]&&APART(e,byS[s]))) return;
         const avg=g.length?g.reduce((t,s)=>t+pairScore(e,byS[s],park),0)/g.length:0;
         if(avg>bs){bs=avg;best=i;}});
       if(best<0) gs.push([e.seat]); else gs[best].push(e.seat);
@@ -692,7 +708,12 @@ if(!state.draft.why || typeof state.draft.why!=='object') state.draft.why={};
 state.sent = lsGet(LS_SENT,null);
 state.key  = lsGet(LS_KEY, CONFIG.teacherKey||'');
 state.roster = {};            // 鎖定時不帶任何資料，解鎖後才載入
-state.groups=Object.assign({nine:null,jan:null}, lsGet(LS_GROUPS,{}));
+// 分組規則改版時，舊的分組自動作廢重算
+const ALGO_VERSION=4;
+state.groups=(lsGet('pm_algo',0)===ALGO_VERSION)
+  ? Object.assign({nine:null,jan:null}, lsGet(LS_GROUPS,{}))
+  : {nine:null,jan:null};
+lsSet('pm_algo',ALGO_VERSION);
 const saveDraft=()=>lsSet(LS_DRAFT,state.draft);
 const saveGroups=()=>lsSet(LS_GROUPS,state.groups);
 function toast(msg){state.toast=msg;render();clearTimeout(window.__t);
@@ -1422,6 +1443,11 @@ document.addEventListener('click',async ev=>{
     const gs=state.groups[p];
     if(gs[gi].includes(mv.seat)){state.move=null;render();return;}
     if(gs[gi].length>=GMAX){toast(`一組最多 ${GMAX} 人，請先把這組的人移走`);return;}
+    {                                             // 不能把不想同組的人放在一起
+      const me=state.roster[mv.seat];
+      const bad=gs[gi].filter(s=>s!==mv.seat&&state.roster[s]&&me&&APART(me,state.roster[s]));
+      if(bad.length){toast(`不能移過去：${NAME_OF[mv.seat]} 和 ${bad.map(s=>NAME_OF[s]).join('、')} 有人表示不想同組`);return;}
+    }
     gs.forEach(g=>{const k=g.indexOf(mv.seat); if(k>=0) g.splice(k,1);});
     gs[gi].push(mv.seat);
     state.groups[p]=gs.filter((g,i)=>g.length||i===gi);   // 搬空的組自動消失
