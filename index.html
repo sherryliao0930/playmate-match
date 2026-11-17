@@ -434,10 +434,10 @@ function pairScore(a,b,park){
   const key=park+b.seat;
   if(m.has(key)) return m.get(key);
   let s;
-  if(APART(a,b)) s=-1000000000;
+  if(APART(a,b)) s=-1e13;
   else{
     const aw=(a.mates[park]||[]).includes(b.seat), bw=(b.mates[park]||[]).includes(a.seat);
-    const W=(aw&&bw)?1000000:((aw||bw)?300:0);
+    const W=(aw&&bw)?1e6:((aw||bw)?1000:0);
     const A=new Set(a.cats), B=new Set(b.cats);
     let inter=0; A.forEach(x=>{if(B.has(x))inter++});
     const uni=new Set([...a.cats,...b.cats]).size||1;
@@ -540,19 +540,31 @@ function hasClash(g){
 const clashCount=gs=>gs.reduce((t,g)=>{let c=0;
   for(let i=0;i<g.length;i++)for(let j=i+1;j<g.length;j++) if(APART(g[i],g[j]))c++;return t+c;},0);
 /* 一組的分數（層級制，上一層永遠壓過下一層）：
-   ① 不想同組 -10億、女生單獨 -10億（都不允許）
-   ② 每個人組裡至少有一位自己點名的人：每人 +1億
-   ③ 互相點名的兩人同組：每對 +100萬
-   ④ 單方面點名同組：每對 +300
-   ⑤ 設施類型、膽量：最多 +8 */
-const HAS_FRIEND=100000000;
-const groupScore=(g,park)=>{let s=loneGirl(g)?-1000000000:0;
+   ① 不想同組：-10兆（pairScore 裡），任何分組都不會有
+   ② 比較孤單的同學身邊有自己點名的人：每人 +100億
+   ③ 每個人組裡至少有一位自己點名的人（單方面點名也算）：每人 +1億
+   ④ 互相點名的兩人同組：每對 +100萬
+   ⑤ 女生不落單（不能是一群男生裡唯一的女生）：違反一組 -10萬
+   ⑥ 單方面點名同組 +1000、設施類型與膽量最多 +8 */
+const HAS_FRIEND=1e8, LONELY_FRIEND=1e10, LONE_GIRL=1e5;
+/* 比較孤單的同學：被點名不超過 1 次，而且沒有任何互選 */
+const LONELY={nine:new Set(),jan:new Set()};
+function lonelySet(list,park){
+  const byS=Object.fromEntries(list.map(e=>[e.seat,e]));
+  return new Set(list.filter(e=>{
+    const inc=list.filter(o=>o.seat!==e.seat&&(o.mates[park]||[]).includes(e.seat)).length;
+    const mut=(e.mates[park]||[]).some(s=>byS[s]&&(byS[s].mates[park]||[]).includes(e.seat));
+    return inc<=1&&!mut;
+  }).map(e=>e.seat));
+}
+const hasFriendIn=(m,g,park)=>g.some(o=>o.seat!==m.seat&&(m.mates[park]||[]).includes(o.seat));
+const groupScore=(g,park)=>{let s=loneGirl(g)?-LONE_GIRL:0;
   for(let i=0;i<g.length;i++){
     for(let j=i+1;j<g.length;j++) s+=pairScore(g[i],g[j],park);
-    const picks=g[i].mates[park]||[];
-    if(g.some((o,k)=>k!==i&&picks.includes(o.seat))) s+=HAS_FRIEND;
+    if(hasFriendIn(g[i],g,park)) s+=HAS_FRIEND+(LONELY[park].has(g[i].seat)?LONELY_FRIEND:0);
   }
   return s;};
+const lonelyOk=(gs,park)=>gs.reduce((t,g)=>t+g.filter(m=>LONELY[park].has(m.seat)&&hasFriendIn(m,g,park)).length,0);
 const friendCount=(gs,park)=>gs.reduce((t,g)=>t+g.filter((m,i)=>
   g.some((o,k)=>k!==i&&(m.mates[park]||[]).includes(o.seat))).length,0);
 const mutualCount=(gs,park)=>gs.reduce((t,g)=>{let c=0;
@@ -612,7 +624,7 @@ const fingerprint=list=>list.map(e=>e.seat+':'+(e.mates.nine||[]).join(',')+';'+
   +';'+(e.avoid||[]).join(',')+';'+e.cats.join(',')+';'+e.courage).join('|');
 function searchPool(list,park,seed,restarts){
   const P=POOL[park], fp=fingerprint(list);
-  if(P.fp!==fp){P.fp=fp;P.map=new Map();P.seen=new Set();}
+  if(P.fp!==fp){P.fp=fp;P.map=new Map();P.seen=new Set();LONELY[park]=lonelySet(list,park);}
   const rnd=seededRandom(seed);
   const plans=sizePlans(list.length);
   for(let r=0;r<restarts;r++){
@@ -624,15 +636,15 @@ function searchPool(list,park,seed,restarts){
     const sig=signature(gs);
     if(P.map.has(sig)) continue;
     P.map.set(sig,{seats:gs.map(g=>g.map(m=>m.seat)),sig,cl:clashCount(gs),lg:gs.filter(loneGirl).length,
-      fr:friendCount(gs,park),mu:mutualCount(gs,park),tot:gs.reduce((t,g)=>t+groupScore(g,park),0)});
+      lo:lonelyOk(gs,park),fr:friendCount(gs,park),mu:mutualCount(gs,park),tot:gs.reduce((t,g)=>t+groupScore(g,park),0)});
   }
   return P;
 }
 /* 把所有合規的組合依品質排好：先比「有好友的人數」，再比「互選對數」，最後比總分 */
 function rankedValid(P){
   let all=[...P.map.values()];
-  const ok=all.filter(x=>x.cl===0&&x.lg===0); if(ok.length) all=ok;
-  return all.sort((x,y)=>y.fr-x.fr||y.mu-x.mu||y.tot-x.tot);
+  const ok=all.filter(x=>x.cl===0); if(ok.length) all=ok;
+  return all.sort((x,y)=>y.lo-x.lo||y.fr-x.fr||y.mu-x.mu||x.lg-y.lg||y.tot-x.tot);
 }
 /* variety=false：第一次分組，固定給最好的那一份
    variety=true ：重新分組，從最好的等級裡挑還沒出現過的；那一級都用過了才往下一級 */
@@ -647,9 +659,9 @@ function buildGroups(list,park,pref,seed,variety){
     let fresh=ranked.filter(x=>!P.seen.has(x.sig));
     if(!fresh.length){ P.seen=new Set(); fresh=ranked; }
     const best=ranked[0], tier=fresh[0];
-    const same=fresh.filter(x=>x.fr===tier.fr&&x.mu===tier.mu);
+    const same=fresh.filter(x=>x.lo===tier.lo&&x.fr===tier.fr&&x.mu===tier.mu&&x.lg===tier.lg);
     pick=same[Math.floor(seededRandom(seed+7)()*same.length)];
-    if(pick.fr<best.fr||pick.mu<best.mu)
+    if(pick.lo<best.lo||pick.fr<best.fr||pick.mu<best.mu||pick.lg>best.lg)
       setTimeout(()=>toast(`最好的組合都用過了，這份稍差一點：有好友 ${pick.fr} 人、互選 ${pick.mu} 對`),0);
   }
   P.seen.add(pick.sig);
@@ -658,6 +670,7 @@ function buildGroups(list,park,pref,seed,variety){
 /* 以座號保存分組，讓老師的手動調整可以留著。每組第一位就是組長。 */
 function ensureGroups(park,entries){
   const byS=Object.fromEntries(entries.map(e=>[e.seat,e]));
+  LONELY[park]=lonelySet(entries,park);
   const valid=new Set(entries.map(e=>e.seat));
   let gs=state.groups[park];
   if(!gs){
@@ -763,7 +776,7 @@ state.sent = lsGet(LS_SENT,null);
 state.key  = lsGet(LS_KEY, CONFIG.teacherKey||'');
 state.roster = {};            // 鎖定時不帶任何資料，解鎖後才載入
 // 分組規則改版時，舊的分組自動作廢重算
-const ALGO_VERSION=6;
+const ALGO_VERSION=7;
 state.groups=(lsGet('pm_algo',0)===ALGO_VERSION)
   ? Object.assign({nine:null,jan:null}, lsGet(LS_GROUPS,{}))
   : {nine:null,jan:null};
@@ -1037,7 +1050,7 @@ function teacherView(){
       <div class="parkhead" style="margin-top:0;justify-content:space-between">
         <span><span class="tag ${p.cls}">${p.name}</span>
           <b style="font-family:var(--display);font-size:1.1rem;margin-left:8px">${gs.length} 組</b>
-          <span class="hint" style="margin-left:8px">有好友 <b>${friendCount(gs,p.key)}/${entries.length}</b> 人．互選同組 <b>${mutualCount(gs,p.key)}</b> 對</span></span>
+          <span class="hint" style="margin-left:8px">孤單同學有伴 <b>${lonelyOk(gs,p.key)}/${LONELY[p.key].size}</b>．有好友 <b>${friendCount(gs,p.key)}/${entries.length}</b> 人．互選同組 <b>${mutualCount(gs,p.key)}</b> 對．女生落單 <b>${gs.filter(loneGirl).length}</b> 組</span></span>
         <span style="display:flex;gap:7px;flex-wrap:wrap">
           <button class="btn ghost sm" data-act="regroup" data-park="${p.key}">↺ 重新自動分組</button>
           <button class="btn ghost sm" data-act="addgroup" data-park="${p.key}">➕ 新增一組</button>
@@ -1048,6 +1061,8 @@ function teacherView(){
         　→ 點下面任一組的「移到這組」
         <button class="btn ghost sm" data-act="cancelmove">取消</button></div>`
        :`<p class="hint" style="margin-top:10px">點學生名字就能把他移到別組。每按一次「↺ 重新自動分組」都會換一種同樣符合規則的組合。</p>`}
+      ${LONELY[p.key].size?`<p class="hint">💛 比較孤單、優先幫他找伴的同學（被點名不超過 1 次且沒有互選）：
+        ${[...LONELY[p.key]].sort((a,b)=>a-b).map(s=>`<b>${s} ${esc(NAME_OF[s])}</b>`).join('、')}</p>`:''}
       <div class="groupgrid">${gs.map((g,i)=>{
         const info=groupInfo(g,p.key);
         const bad=!ALLOW_SIZES.has(g.length);
@@ -1085,7 +1100,7 @@ function teacherView(){
   return `<div class="card">
     <div class="parkhead" style="justify-content:space-between;margin-top:0">
       <h2 class="q" style="margin:0">🧑‍🏫 老師專區</h2>
-      <span class="private" style="background:var(--surface-2);color:var(--ink-soft)">分組規則：每組 2、4、5 人．女生至少 2 位．不想同組必分開．先確保身邊有喜歡的人</span>
+      <span class="private" style="background:var(--surface-2);color:var(--ink-soft)">分組順序：① 不想同組必分開 ② 孤單同學綁定他喜歡的人 ③ 每人身邊有自己點名的人 ④ 互選同組 ⑤ 女生不落單．每組 2、4、5 人</span>
     </div>
     ${DEMO?`<div class="note warn"><b>示範模式</b>：還沒填 <code>CONFIG.endpoint</code>，學生送出的答案只會留在他們自己的裝置上。
       請依 README 部署 Google Apps Script 後，把網址填進 <code>index.html</code> 最上面的設定區。</div>`:`
