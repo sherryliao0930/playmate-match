@@ -246,7 +246,12 @@ textarea,input[type=text],input[type=password],input[type=url]{width:100%;font:i
 .mchip{background:var(--surface-2);border:2px solid var(--line);border-radius:9px;
   padding:2px 9px;font-size:.87rem;font-weight:500;transition:.12s}
 .mchip:hover{background:var(--yellow);transform:translateY(-1px)}
+.mchip.lead{background:var(--yellow);font-weight:700}
 .mchip.picked{background:var(--grape);color:#fff;border-color:var(--grape)}
+.leadsel{display:flex;align-items:center;gap:7px;font-size:.8rem;font-weight:700;color:var(--ink-faint);
+  margin-top:4px}
+.leadsel select{flex:1;min-width:0;font:inherit;font-size:.85rem;font-weight:500;color:var(--ink);
+  background:var(--surface-2);border:2px solid var(--line);border-radius:9px;padding:4px 8px}
 .movebar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;
   background:#EFE9FF;border:2.5px solid var(--line);border-radius:13px;padding:9px 14px;font-size:.9rem}
 :root[data-theme="dark"] .movebar{background:#3A2F63}
@@ -409,7 +414,50 @@ function targetSizes(n,pref){
   for(let i=0;i<k;i++) sizes.push(base+(i<rem?1:0));
   return sizes.sort((a,b)=>b-a);               // 人多的組先排
 }
+/* 組長：組內被點名最多的人優先，其次全班被點名數、膽量 */
+function leaderRank(m,g,park,all){
+  const inG=g.filter(x=>x.seat!==m.seat&&(x.mates[park]||[]).includes(m.seat)).length;
+  const inClass=all.filter(x=>x.seat!==m.seat&&(x.mates[park]||[]).includes(m.seat)).length;
+  return inG*100 + inClass*5 + m.courage*0.5 - m.seat*0.001;
+}
+const withLeader=(g,park,all)=>g.slice().sort((a,b)=>leaderRank(b,g,park,all)-leaderRank(a,g,park,all));
+
+/* 彈性分組：從最合得來的兩人開始長，契合度不夠就停，2～4 人都可以 */
+const FLEX_FLOOR=4.0;
+function buildFlexible(list,park){
+  const pool=list.slice(), groups=[];
+  while(pool.length>=GMIN){
+    let bi=0,bj=1,bs=-Infinity;
+    for(let i=0;i<pool.length;i++)for(let j=i+1;j<pool.length;j++){
+      const sc=pairScore(pool[i],pool[j],park);
+      if(sc>bs){bs=sc;bi=i;bj=j;}
+    }
+    const g=[pool[bi],pool[bj]];
+    pool.splice(Math.max(bi,bj),1); pool.splice(Math.min(bi,bj),1);
+    while(g.length<GMAX&&pool.length){
+      let k=-1,ks=-Infinity;
+      pool.forEach((p,idx)=>{
+        const avg=g.reduce((t,m)=>t+pairScore(p,m,park),0)/g.length;
+        if(avg>ks){ks=avg;k=idx;}
+      });
+      // 剩一個人沒地方去，就直接收進來，避免落單
+      if(ks<FLEX_FLOOR && pool.length!==1) break;
+      if(ks<FLEX_FLOOR && pool.length===1 && g.length>=GMAX) break;
+      g.push(pool.splice(k,1)[0]);
+    }
+    groups.push(g);
+  }
+  pool.forEach(p=>{                             // 最後落單的人
+    let best=-1,bs=-Infinity;
+    groups.forEach((g,i)=>{ if(g.length>=GMAX) return;
+      const avg=g.reduce((t,m)=>t+pairScore(p,m,park),0)/g.length;
+      if(avg>bs){bs=avg;best=i;}});
+    if(best<0) groups.push([p]); else groups[best].push(p);
+  });
+  return groups;
+}
 function buildGroups(list,park,pref){
+  if(pref==='flex') return buildFlexible(list,park).map(g=>withLeader(g,park,list));
   const pool=list.slice();
   const groups=[];
   targetSizes(pool.length,pref).forEach(sz=>{
@@ -439,9 +487,9 @@ function buildGroups(list,park,pref){
       if(avg>bs){bs=avg;best=i;}});
     if(best<0) groups.push([p]); else groups[best].push(p);
   });
-  return groups;
+  return groups.map(g=>withLeader(g,park,list));
 }
-/* 以座號保存分組，讓老師的手動調整可以留著 */
+/* 以座號保存分組，讓老師的手動調整可以留著。每組第一位就是組長。 */
 function ensureGroups(park,entries){
   const byS=Object.fromEntries(entries.map(e=>[e.seat,e]));
   const valid=new Set(entries.map(e=>e.seat));
@@ -498,7 +546,7 @@ let state={
   sent:null,
   roster:{},                       // seat -> entry（老師端）
   key:'', loading:false, loadErr:'', showPrivate:false,
-  size:4, groups:{nine:null,jan:null}, move:null, toast:null
+  size:'flex', groups:{nine:null,jan:null}, move:null, toast:null
 };
 function lsGet(k,fb){try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch(e){return fb;}}
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
@@ -750,10 +798,14 @@ function teacherView(){
         return `<div class="group ${p.cls}">
           <h4><span>${GROUP_EMOJI[i%GROUP_EMOJI.length]} 第 ${i+1} 組</span>
             <em${bad?' style="color:var(--bad);font-weight:700"':''}>${g.length} 人・膽量 ${info.avg.toFixed(1)}</em></h4>
-          <div class="members">${g.map(m=>
-            `<button class="mchip${mv&&mv.seat===m.seat?' picked':''}" data-act="pickmember"
-               data-park="${p.key}" data-seat="${m.seat}">${m.seat} ${esc(m.name)}</button>`).join('')
+          <div class="members">${g.map((m,mi)=>
+            `<button class="mchip${mv&&mv.seat===m.seat?' picked':''}${mi===0?' lead':''}" data-act="pickmember"
+               data-park="${p.key}" data-seat="${m.seat}">${mi===0?'👑 ':''}${m.seat} ${esc(m.name)}</button>`).join('')
             ||'<span style="color:var(--ink-faint)">（空組）</span>'}</div>
+          ${g.length>1?`<label class="leadsel">組長
+            <select data-act="leader" data-park="${p.key}" data-gi="${i}">
+              ${g.map(m=>`<option value="${m.seat}"${m.seat===g[0].seat?' selected':''}>${m.seat} ${esc(m.name)}</option>`).join('')}
+            </select></label>`:''}
           ${mv?`<button class="btn sm" style="width:100%" data-act="moveto" data-park="${p.key}" data-gi="${i}">移到這組</button>`
              :(g.length?'':`<button class="btn ghost sm" style="width:100%" data-act="delgroup" data-park="${p.key}" data-gi="${i}">✕ 刪掉這個空組</button>`)}
           ${bad?`<div class="conflict">⚠️ 這組 ${g.length} 人，不在 ${GMIN}～${GMAX} 人之間</div>`:''}
@@ -772,8 +824,8 @@ function teacherView(){
   return `<div class="card">
     <div class="parkhead" style="justify-content:space-between;margin-top:0">
       <h2 class="q" style="margin:0">🧑‍🏫 老師專區</h2>
-      <div class="seg">${[2,3,4].map(n=>
-        `<button data-act="size" data-n="${n}" aria-pressed="${state.size===n}">每組 ${n} 人</button>`).join('')}</div>
+      <div class="seg">${[['flex','彈性 2～4 人'],[2,'固定 2 人'],[3,'固定 3 人'],[4,'固定 4 人']].map(([n,lab])=>
+        `<button data-act="size" data-n="${n}" aria-pressed="${String(state.size)===String(n)}">${lab}</button>`).join('')}</div>
     </div>
     ${DEMO?`<div class="note warn"><b>示範模式</b>：還沒填 <code>CONFIG.endpoint</code>，學生送出的答案只會留在他們自己的裝置上。
       請依 README 部署 Google Apps Script 後，把網址填進 <code>index.html</code> 最上面的設定區。</div>`:`
@@ -855,10 +907,12 @@ function rawCSV(){
 function groupsCSV(){
   const entries=SEATS.map(s=>state.roster[s]).filter(Boolean);
   const byS=Object.fromEntries(entries.map(e=>[e.seat,e]));
-  const rows=[['樂園','組別','人數','成員','平均膽量','共同喜好類型','全組都想玩','玩伴心願達成','需老師微調','建議路線']];
+  const rows=[['樂園','組別','人數','組長','成員','平均膽量','共同喜好類型','全組都想玩','玩伴心願達成','需老師微調','建議路線']];
   PARK_LIST.forEach(p=>groupMembers(ensureGroups(p.key,entries),byS).forEach((g,i)=>{
     const info=groupInfo(g,p.key);
-    rows.push([p.name,'第'+(i+1)+'組',g.length,g.map(m=>m.seat+' '+m.name).join('、'),
+    rows.push([p.name,'第'+(i+1)+'組',g.length,
+      g.length?g[0].seat+' '+g[0].name:'',
+      g.map((m,mi)=>m.seat+' '+m.name+(mi===0?'（組長）':'')).join('、'),
       info.avg.toFixed(1), info.main.map(c=>CAT_OF[c].name).join('、'),
       info.shared.map(c=>CAT_OF[c].name).join('、'),
       (info.wishTotal?Math.round(info.wish/info.wishTotal*100):100)+'%',
@@ -890,6 +944,16 @@ function rr(ctx,x,y,w,h,r){
   ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);
   ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();
 }
+function wrapTokens(ctx,tokens,maxW,sep='　'){
+  const out=[];let line='';
+  tokens.forEach(t=>{
+    const trial=line?line+sep+t:t;
+    if(ctx.measureText(trial).width>maxW&&line){out.push(line);line=t;}
+    else line=trial;
+  });
+  if(line)out.push(line);
+  return out.length?out:['—'];
+}
 function wrapLines(ctx,text,maxW){
   const out=[];let line='';
   for(const ch of String(text)){
@@ -918,7 +982,7 @@ async function downloadPoster(park){
     const rideLines=info.rides.slice(0,4).map(r=>wrapLines(mk,'・'+r.r.split('（')[0],cardW-56).length)
       .reduce((a,b)=>a+b,0);
     mk.font=`700 17px ${PFONT}`;
-    const tagLines=wrapLines(mk,info.main.map(c=>CAT_OF[c].emoji+CAT_OF[c].name).join('　')||'—',cardW-56).length;
+    const tagLines=wrapTokens(mk,info.main.map(c=>CAT_OF[c].emoji+CAT_OF[c].name),cardW-56).length;
     const h=14+56+g.length*40+16+tagLines*26+14+28+rideLines*26+20;
     return {g,info,h,rideLines,tagLines};
   });
@@ -975,14 +1039,20 @@ async function downloadPoster(park){
       c.fillText(rt,x+cardW-22-c.measureText(rt).width,ty-2);
       ty+=18;
 
-      m.g.forEach(st=>{
+      m.g.forEach((st,mi)=>{
+        const isLead=mi===0;
         ty+=40;
-        c.fillStyle='#FFF8EC'; rr(c,x+22,ty-26,cardW-44,34,10); c.fill();
-        c.lineWidth=2; c.strokeStyle='#2A2140'; rr(c,x+22,ty-26,cardW-44,34,10); c.stroke();
+        c.fillStyle=isLead?'#FFE49A':'#FFF8EC'; rr(c,x+22,ty-26,cardW-44,34,10); c.fill();
+        c.lineWidth=isLead?3:2; c.strokeStyle='#2A2140'; rr(c,x+22,ty-26,cardW-44,34,10); c.stroke();
         c.fillStyle='#6B6189'; c.font=`700 14px ${PFONT}`;
         c.fillText(String(st.seat),x+34,ty-4);
-        c.fillStyle='#2A2140'; c.font=`600 20px ${PFONT}`;
+        c.fillStyle='#2A2140'; c.font=`${isLead?'800':'600'} 20px ${PFONT}`;
         c.fillText(st.name,x+64,ty-3);
+        if(isLead){
+          c.font=`700 15px ${PFONT}`;
+          const tag='👑 組長';
+          c.fillText(tag,x+cardW-34-c.measureText(tag).width,ty-4);
+        }
       });
 
       ty+=28;
@@ -990,7 +1060,7 @@ async function downloadPoster(park){
       c.fillText('共同喜好',x+22,ty);
       ty+=8;
       c.fillStyle=accent; c.font=`700 17px ${PFONT}`;
-      wrapLines(c,m.info.main.map(k=>CAT_OF[k].emoji+CAT_OF[k].name).join('　')||'—',cardW-56)
+      wrapTokens(c,m.info.main.map(k=>CAT_OF[k].emoji+CAT_OF[k].name),cardW-56)
         .forEach(ln=>{ty+=22;c.fillText(ln,x+22,ty);});
 
       ty+=26;
@@ -1079,8 +1149,8 @@ document.addEventListener('click',async ev=>{
     render();scrollTop();
     if(state.view==='teacher'&&!DEMO&&state.key) loadRoster();
   }
-  else if(a==='size'){state.size=Number(b.dataset.n);state.groups={nine:null,jan:null};
-    state.move=null;saveGroups();render();}
+  else if(a==='size'){const n=b.dataset.n;state.size=(n==='flex'?'flex':Number(n));
+    state.groups={nine:null,jan:null};state.move=null;saveGroups();render();}
   else if(a==='togglePrivate'){state.showPrivate=!state.showPrivate;render();}
   else if(a==='regroup'){const p=b.dataset.park;state.groups[p]=null;state.move=null;saveGroups();render();
     toast(PARKS[p].name+'已重新自動分組');}
@@ -1113,6 +1183,16 @@ document.addEventListener('click',async ev=>{
   else if(a==='csvGroups'){offerFile(`${CLASS_INFO.klass}_玩伴分組結果.csv`,groupsCSV());}
 });
 document.addEventListener('change',ev=>{
+  if(ev.target.dataset && ev.target.dataset.act==='leader'){
+    const p=ev.target.dataset.park, gi=Number(ev.target.dataset.gi), s=Number(ev.target.value);
+    const g=state.groups[p] && state.groups[p][gi];
+    if(g && g.includes(s)){                       // 組長＝陣列第一位
+      state.groups[p][gi]=[s,...g.filter(x=>x!==s)];
+      saveGroups(); render();
+      toast(NAME_OF[s]+' 成為第 '+(gi+1)+' 組組長');
+    }
+    return;
+  }
   if(ev.target.dataset && ev.target.dataset.act==='importcsv'){
     const f=ev.target.files&&ev.target.files[0]; if(!f) return;
     const fr=new FileReader();
