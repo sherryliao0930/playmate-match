@@ -261,6 +261,9 @@ textarea,input[type=text],input[type=password],input[type=url]{width:100%;font:i
 .plan{font-size:.81rem;color:var(--ink-soft);margin-top:8px;border-top:2px dotted var(--ink-faint);padding-top:9px}
 .plan ul{margin:5px 0 0;padding-left:19px}
 .plan li{margin-bottom:2px}
+.planblk{margin-top:7px}
+.planblk i{display:block;font-style:normal;font-weight:800;font-size:.78rem;letter-spacing:.02em}
+.planblk span{display:block;color:var(--ink-soft);font-size:.8rem;line-height:1.55}
 .tablewrap{overflow-x:auto;margin-top:13px;border:2.5px solid var(--line);border-radius:15px}
 table{border-collapse:collapse;width:100%;font-size:.87rem;min-width:640px}
 th,td{text-align:left;padding:8px 11px;border-bottom:2px solid var(--surface-2);vertical-align:top}
@@ -364,10 +367,10 @@ const PARKS = {
    thrill:['馬雅探險（懸吊式雲霄飛車，11 層樓俯衝＋360° 翻轉，限 130cm 以上）','UFO 幽浮歷險（85 公尺自由落體，全台最高，時速 105km，限 130cm 以上）','太空山（室內雲霄飛車，限 120cm 以上）','海盜船／VR 風暴幽靈船（限 120cm 以上）','宇宙迴旋'],
    water:['金礦山探險（獨木舟衝下 15 公尺，水花超大）','無敵艦隊（水上雲霄飛車，爬升 30 公尺後倒衝，限 100cm 以上）','大漩渦（急流泛舟捲進漩渦，限 110cm 以上）','水戰船（水槍對戰，互相噴）','水立方噴泉戲水廣場（夏季）'],
    horror:['VR 風暴幽靈船','侏羅紀探險（恐龍黑暗設施）','動感電影院','嘉年華特區'],
-   gentle:['碰碰車','音樂馬車（旋轉木馬）','老爺車','單軌電車','轉轉車','熱氣球','跳跳蛙（限 100cm 以上）','皇家火車','飛行船','水沙連小火車'],
-   scenic:['日月潭纜車（空中俯瞰日月潭，門票已含）','九族纜車 Skyline','觀山樓','水沙連歐洲花園＆麗宮','櫻花大道・櫻花林・櫻花湖','榮華湖・松園・天理園','石雕森林步道'],
-   culture:['娜魯灣劇場（原住民歌舞表演）','水劇場','九族文化博物館','原住民部落景觀區（各族傳統建築）','琉璃珠工坊 DIY','紅柿租衣坊（原住民服裝體驗）','吹箭場・賽德克射箭場','萬山神石'],
-   food:['廣場市集','等路大街','阿拉丁美食區','馬雅餐廳・金礦山餐廳・西班牙餐廳','麗宮餐廳','小米酒故事館','出口紀念品館']
+   gentle:['碰碰車','音樂馬車（旋轉木馬）','老爺車','單軌電車','轉轉車','熱氣球','跳跳蛙（限 100cm 以上）','皇家火車','飛行船','水沙連小火車','星際嘉年華'],
+   scenic:['日月潭纜車（空中俯瞰日月潭，門票已含）','九族纜車 Skyline','觀山樓','水沙連歐洲花園','麗宮','櫻花大道','櫻花林','櫻花湖','榮華湖','松園','天理園','石雕森林步道','印地安圖騰區'],
+   culture:['娜魯灣劇場（原住民歌舞表演）','水劇場','文化廣場','九族文化博物館','原住民部落景觀區（各族傳統建築）','琉璃珠工坊 DIY','紅柿租衣坊（原住民服裝體驗）','吹箭場','賽德克射箭場','萬山神石','小米酒故事館'],
+   food:['廣場市集','等路大街','阿拉丁速食區','馬雅餐廳','金礦山餐廳','西班牙餐廳','麗宮餐廳','水晶餐廳','湖畔餐坊','魯比特漢堡店','出口紀念品館'],
   }},
  jan:{key:'jan', name:'劍湖山世界', short:'劍湖山', cls:'j',
   site:'https://www.janfusun.com.tw/html/page/index.php?unid=2&cid=5&cid2=102&pid=295',
@@ -375,10 +378,10 @@ const PARKS = {
    thrill:['飛天潛艇 G5（近 90° 俯衝入洞，時速 110km、5G，限 140cm 以上）','衝瘋飛車（814 公尺倒掛懸吊，360° 翻滾，限 140cm 以上）','擎天飛梭（65 公尺雙塔彈射＋自由落體，限 140cm 以上）','海神號（大海盜船，限 110cm 以上）','天女散花（限 110cm 以上）','迴旋磁場（限 120cm 以上）'],
    horror:['驚嚇列車（AR 鬼屋，8 大恐怖場景，限 100cm 以上、13 歲以下需陪同）','VR Dino 飛越恐龍谷（限 110cm 以上）','魔鏡迷宮'],
    water:['尖叫無底洞（3 層樓垂直滑水道，限 140cm 以上・夏季）','龍捲風（7 層樓大水盆旋轉，限 120cm 以上・夏季）','大碗公（360° 旋轉滑水道，限 120cm 以上・夏季）','小威漂漂河（限 110cm 以上・夏季）','600 秒維京巨浪造浪池（夏季）','大船塢水戰場（夏季）'],
-   gentle:['幸福摩天輪（約 30 層樓高，園區地標）','彩虹列車','叢林溜滑梯（限 110cm 以上）','咕咕飛車','皇家馬車','嘟嘟車','飛天法寶','寶藏哈哈列車','百戰嚕啦啦球池','5D 冒險劇院','魔奇釣魚場'],
-   scenic:['幸福摩天輪賞景','和園紀念花園','渡假花坊・百石花坡','梅園・彩虹步道','鳳梨型吊橋','環境教育園區','咖啡博覽館'],
+   gentle:['幸福摩天輪（約 30 層樓高，園區地標）','彩虹列車','叢林溜滑梯（限 110cm 以上）','咕咕飛車','咕咕列車','皇家馬車','嘟嘟車','飛天法寶','兒童蛙娃機','彩虹攀岩','寶藏哈哈列車','百戰嚕啦啦球池','5D 冒險劇院','魔奇釣魚場'],
+   scenic:['幸福摩天輪賞景','和園紀念花園','渡假花坊','百石花坡','梅園','彩虹步道','鳳梨型吊橋','環境教育園區','一粒麥子紀念禮拜堂','咖啡博覽館'],
    culture:['彩虹劇場《歡樂花樣嘉年華》（小丑魔術，約 40 分鐘）','劍湖山博物館','名偵探柯南主題樂園（期間限定・摩天輪主題導覽）'],
-   food:['柯南主題餐廳・主題餐車','柯南主題賣店','KU 代美食廣場','KU COFFEE 美學館','咖啡茶博覽館','寶藏村商店・彩色小熊紀念品']
+   food:['柯南主題餐廳','柯南主題餐車','柯南主題賣店','KU 代美食廣場','KU COFFEE 美學館','咖啡茶博覽館','劍湖山餐廳','炸雞店','可樂店','寶藏村商店','彩色小熊紀念品']
   }}
 };
 const PARK_LIST=[PARKS.nine,PARKS.jan];
@@ -521,9 +524,15 @@ function groupInfo(g,park){
   g.forEach(m=>{(m.mates[park]||[]).forEach(w=>{wishTotal++;if(g.some(x=>x.seat===w))wish++;});});
   let clash=0;
   for(let i=0;i<g.length;i++)for(let j=i+1;j<g.length;j++) if(APART(g[i],g[j])) clash++;
+  // 全組至少一半人想玩的類型，就把那個類型在這個園區的設施全部列進建議
+  const half=Math.max(1,Math.ceil(g.length/2));
+  let liked=top.filter(([,n])=>n>=half).map(([c])=>c);
+  if(!liked.length) liked=top.slice(0,2).map(([c])=>c);
+  const plan=liked.map(c=>({cat:c,
+    rides:(PARKS[park].rides[c]||[]).map(r=>r.split('（')[0])}));
   const rides=[];
-  main.forEach(c=>{(PARKS[park].rides[c]||[]).slice(0,2).forEach(r=>rides.push({cat:c,r}));});
-  return {shared,main,avg,wish,wishTotal,clash,rides};
+  plan.forEach(b=>b.rides.slice(0,2).forEach(r=>rides.push({cat:b.cat,r})));
+  return {shared,main,liked,plan,avg,wish,wishTotal,clash,rides};
 }
 /* 全班「想先分開玩」有多少真的被分開了 */
 function apartStats(entries,groups){
@@ -815,8 +824,10 @@ function teacherView(){
             <div>全組都想玩：<b>${info.shared.map(c=>CAT_OF[c].name).join('、')||'—'}</b></div>
             <div>玩伴心願達成：<b>${info.wishTotal?Math.round(info.wish/info.wishTotal*100):100}%</b>（${info.wish}/${info.wishTotal}）</div>
           </div>
-          <div class="plan"><b>建議路線</b><ul>${info.rides.slice(0,5).map(r=>
-            `<li><span style="color:${CAT_OF[r.cat].col}">${CAT_OF[r.cat].emoji}</span> ${esc(r.r.split('（')[0])}</li>`).join('')}</ul></div>
+          <div class="plan"><b>${p.key==='nine'?'🌿':'🎢'} ${p.name}　建議遊玩設施</b>
+            ${info.plan.map(bk=>`<div class="planblk">
+              <i style="color:${CAT_OF[bk.cat].col}">${CAT_OF[bk.cat].emoji} ${CAT_OF[bk.cat].name}</i>
+              <span>${bk.rides.map(esc).join('、')}</span></div>`).join('')}</div>
         </div>`;}).join('')}</div></div>`;
   }).join('') : '';
   const apartPct = apartAll.total ? Math.round(apartAll.kept/apartAll.total*100) : null;
@@ -917,7 +928,7 @@ function groupsCSV(){
       info.shared.map(c=>CAT_OF[c].name).join('、'),
       (info.wishTotal?Math.round(info.wish/info.wishTotal*100):100)+'%',
       info.clash?'有 '+info.clash+' 對希望避免同組':'',
-      info.rides.slice(0,6).map(r=>r.r.split('（')[0]).join('、')]);
+      info.plan.map(bk=>CAT_OF[bk.cat].name+'：'+bk.rides.join('、')).join('\n')]);
   }));
   return toCSV(rows);
 }
@@ -937,6 +948,8 @@ async function offerFile(filename,text,mime){
 
 /* ============ 分組圖（PNG） ============ */
 const POSTER_COLORS=['#FF5B6E','#FFC43D','#19BFA8','#2F9BE8','#8A6BE0','#FF8F3C','#FF7FB4'];
+const CAT_HEX={thrill:'#E03A50',water:'#1F7FC9',horror:'#6F52C9',gentle:'#0E9B88',
+  scenic:'#D65893',culture:'#D4730F',food:'#B8860B'};
 const PFONT='"Noto Sans TC","Microsoft JhengHei","PingFang TC",sans-serif';
 function rr(ctx,x,y,w,h,r){
   ctx.beginPath();
@@ -972,19 +985,21 @@ async function downloadPoster(park){
   try{await document.fonts.ready;}catch(e){}
 
   const S=2, W=1280, PAD=46, GAP=22;
-  const cols=gs.length<=2?Math.max(1,gs.length):(gs.length<=6?2:3);
+  const cols=gs.length===1?1:2;
   const cardW=Math.floor((W-PAD*2-GAP*(cols-1))/cols);
   const mk=document.createElement('canvas').getContext('2d');
   // 先算每張卡片的高度
   const metas=gs.map(g=>{
     const info=groupInfo(g,park);
-    mk.font=`500 19px ${PFONT}`;
-    const rideLines=info.rides.slice(0,4).map(r=>wrapLines(mk,'・'+r.r.split('（')[0],cardW-56).length)
-      .reduce((a,b)=>a+b,0);
+    const blocks=info.plan.map(bk=>{
+      mk.font=`500 18px ${PFONT}`;
+      return {bk, lines:wrapTokens(mk,bk.rides,cardW-60,'、')};
+    });
+    const planH=blocks.reduce((t,b)=>t+24+b.lines.length*25+6,0);
     mk.font=`700 17px ${PFONT}`;
     const tagLines=wrapTokens(mk,info.main.map(c=>CAT_OF[c].emoji+CAT_OF[c].name),cardW-56).length;
-    const h=14+56+g.length*40+16+tagLines*26+14+28+rideLines*26+20;
-    return {g,info,h,rideLines,tagLines};
+    const h=14+56+g.length*40+16+tagLines*26+16+30+planH+18;
+    return {g,info,blocks,h,tagLines};
   });
   const rows=[];
   for(let i=0;i<metas.length;i+=cols) rows.push(metas.slice(i,i+cols));
@@ -1063,12 +1078,16 @@ async function downloadPoster(park){
       wrapTokens(c,m.info.main.map(k=>CAT_OF[k].emoji+CAT_OF[k].name),cardW-56)
         .forEach(ln=>{ty+=22;c.fillText(ln,x+22,ty);});
 
-      ty+=26;
-      c.fillStyle='#9A92B4'; c.font=`700 14px ${PFONT}`;
-      c.fillText('建議路線',x+22,ty);
-      c.fillStyle='#4A4266'; c.font=`500 19px ${PFONT}`;
-      m.info.rides.slice(0,4).forEach(r=>{
-        wrapLines(c,'・'+r.r.split('（')[0],cardW-56).forEach(ln=>{ty+=26;c.fillText(ln,x+22,ty);});
+      ty+=30;
+      c.fillStyle='#2A2140'; c.font=`800 16px ${PFONT}`;
+      c.fillText(`${park==='nine'?'🌿':'🎢'} ${p.name}　建議遊玩設施`,x+22,ty);
+      m.blocks.forEach(b=>{
+        ty+=24;
+        c.fillStyle=CAT_HEX[b.bk.cat]; c.font=`800 15px ${PFONT}`;
+        c.fillText(`${CAT_OF[b.bk.cat].emoji} ${CAT_OF[b.bk.cat].name}`,x+22,ty);
+        c.fillStyle='#4A4266'; c.font=`500 18px ${PFONT}`;
+        b.lines.forEach(ln=>{ty+=25;c.fillText(ln,x+30,ty);});
+        ty+=6;
       });
     });
     y+=rowH[ri]+GAP;
