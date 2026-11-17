@@ -661,8 +661,14 @@ async function sendAnswer(payload){
   if(data && data.ok===false) throw new Error(data.error||'伺服器回報失敗');
   return {ok:true};
 }
+/* 全形英數轉半形、去掉前後空白——避免中文輸入法打出全形密碼 */
+const normKey=s=>String(s||'').trim()
+  .replace(/[！-～]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0))
+  .replace(/　/g,'');
+
 /* 進入老師專區前先驗證密碼 */
-async function unlock(key){
+async function unlock(raw){
+  const key=normKey(raw);
   if(!key){state.loadErr='請輸入密碼';render();return;}
   if(DEMO){ state.key=key; state.unlocked=true; state.loadErr=''; lsSet(LS_KEY,key);
     state.roster=lsGet(LS_CACHE,{}); render(); return; }
@@ -670,9 +676,12 @@ async function unlock(key){
   try{
     const url=CONFIG.endpoint+(CONFIG.endpoint.includes('?')?'&':'?')+
       'action=list&key='+encodeURIComponent(key);
-    const res=await fetch(url);
-    const data=await res.json();
-    if(!data.ok) throw new Error(data.error==='bad key'?'密碼不對，再試一次':(data.error||'讀取失敗'));
+    let res,data;
+    try{ res=await fetch(url); data=await res.json(); }
+    catch(e){ throw new Error('連不到收件伺服器。請確認網路，或 Apps Script 的「誰可以存取」是否設為「任何人」。'); }
+    if(!data.ok) throw new Error(data.error==='bad key'
+      ? '密碼不對。請對照 Apps Script 裡 TEACHER_KEY 的值，注意大小寫，以及有沒有打成全形。'
+      : (data.error||'讀取失敗'));
     const next={};
     (data.rows||[]).forEach(r=>{const e=normalise(r); if(e) next[e.seat]=e;});
     state.roster=next; lsSet(LS_CACHE,next);

@@ -40,10 +40,20 @@ function doPost(e) {
   }
 }
 
+// 比對密碼前先正規化：去前後空白、全形英數轉半形、不分大小寫
+function normKey(s) {
+  return String(s == null ? '' : s).trim()
+    .replace(/[！-～]/g, function (c) {
+      return String.fromCharCode(c.charCodeAt(0) - 0xFEE0);
+    })
+    .replace(/　/g, '')
+    .toLowerCase();
+}
+
 function doGet(e) {
   const p = (e && e.parameter) || {};
   if (p.action !== 'list') return json({ ok: true, msg: 'ready' });
-  if (p.key !== TEACHER_KEY) return json({ ok: false, error: 'bad key' });
+  if (normKey(p.key) !== normKey(TEACHER_KEY)) return json({ ok: false, error: 'bad key' });
 
   const values = getSheet().getDataRange().getValues().slice(1);
   const bySeat = {};                       // 同一人重複填，以最後一次為準
