@@ -1,0 +1,944 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>畢旅玩伴配對</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap">
+<style>
+/* ===== 版型：糖果色遊樂園。白底貼紙卡片＋粗黑描邊＋實心投影，上方三角彩旗。 ===== */
+:root{
+  --sky:#B8E6FF; --sky2:#E6F7FF; --ground:#FFF6E8;
+  --bg:#EAF7FF; --surface:#FFFFFF; --surface-2:#FFF8EC;
+  --ink:#2A2140; --ink-soft:#6B6189; --ink-faint:#9A92B4;
+  --line:#2A2140;
+  --red:#FF5B6E; --yellow:#FFC43D; --mint:#19BFA8; --grape:#8A6BE0; --blue:#2F9BE8; --orange:#FF8F3C; --pink:#FF7FB4;
+  --nine:#1BAE6B; --jan:#2F9BE8;
+  --ok:#17A06B; --bad:#E4466B;
+  --sticker:0 4px 0 var(--line);
+  --sticker-sm:0 3px 0 var(--line);
+  --r:20px;
+  --display:"Baloo 2","Noto Sans TC",system-ui,sans-serif;
+  --body:"Noto Sans TC",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --sky:#2A2456; --sky2:#1C1838; --ground:#1C1838;
+  --bg:#141029; --surface:#221C3E; --surface-2:#2A2350;
+  --ink:#F4F0FF; --ink-soft:#BDB4DC; --ink-faint:#8A81AC;
+  --line:#0C0918;
+  --red:#FF7585; --yellow:#FFD166; --mint:#3FD7C0; --grape:#A78BFA; --blue:#5FB8F5; --orange:#FFA961; --pink:#FF9BC6;
+  --nine:#3FD48C; --jan:#5FB8F5;
+  --ok:#43D197; --bad:#FF7A9C;
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --sky:#2A2456; --sky2:#1C1838; --ground:#1C1838;
+  --bg:#141029; --surface:#221C3E; --surface-2:#2A2350;
+  --ink:#F4F0FF; --ink-soft:#BDB4DC; --ink-faint:#8A81AC;
+  --line:#0C0918;
+  --red:#FF7585; --yellow:#FFD166; --mint:#3FD7C0; --grape:#A78BFA; --blue:#5FB8F5; --orange:#FFA961; --pink:#FF9BC6;
+  --nine:#3FD48C; --jan:#5FB8F5;
+  --ok:#43D197; --bad:#FF7A9C;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg);color:var(--ink);font-family:var(--body);line-height:1.65;font-size:15px;
+  -webkit-text-size-adjust:100%;
+  background-image:radial-gradient(circle at 12% 8%,rgba(255,196,61,.18) 0,transparent 22%),
+                   radial-gradient(circle at 88% 4%,rgba(255,91,110,.16) 0,transparent 20%),
+                   radial-gradient(circle at 50% 100%,rgba(25,191,168,.14) 0,transparent 32%);
+  background-attachment:fixed;
+}
+.wrap{max-width:900px;margin:0 auto;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:0 60px}
+.wrap.wide{max-width:1200px}
+h1,h2,h3,h4{font-family:var(--display);margin:0;line-height:1.3;text-wrap:balance;letter-spacing:.01em}
+p{margin:0}
+button{font:inherit;color:inherit;cursor:pointer;font-family:var(--body)}
+:focus-visible{outline:3px dashed var(--grape);outline-offset:3px;border-radius:8px}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--surface-2);
+  border:1px solid var(--ink-faint);border-radius:5px;padding:1px 5px;font-size:.88em}
+
+/* ---- 彩旗 ---- */
+.bunting{height:20px;display:flex;overflow:hidden;width:100%}
+.bunting i{flex:1 1 24px;min-width:0;height:20px;clip-path:polygon(0 0,100% 0,50% 100%)}
+.bunting i:nth-child(6n+1){background:var(--red)}
+.bunting i:nth-child(6n+2){background:var(--yellow)}
+.bunting i:nth-child(6n+3){background:var(--mint)}
+.bunting i:nth-child(6n+4){background:var(--blue)}
+.bunting i:nth-child(6n+5){background:var(--grape)}
+.bunting i:nth-child(6n+6){background:var(--orange)}
+
+/* ---- 標頭 ---- */
+header.top{background:linear-gradient(170deg,var(--sky),var(--sky2));
+  border:3px solid var(--line);border-radius:0 0 26px 26px;border-top:none;
+  box-shadow:var(--sticker);padding:20px 22px 22px;position:relative;overflow:hidden}
+header.top::after{content:"";position:absolute;right:-26px;bottom:-34px;width:150px;height:150px;
+  border-radius:50%;background:rgba(255,255,255,.35)}
+:root[data-theme="dark"] header.top::after{background:rgba(255,255,255,.05)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) header.top::after{background:rgba(255,255,255,.05)}}
+.eyebrow{font-size:.76rem;letter-spacing:.1em;color:var(--ink-soft);font-weight:700}
+h1{font-size:clamp(1.7rem,6vw,2.6rem);font-weight:800;margin-top:4px;position:relative;z-index:1}
+h1 .ride{display:inline-block;animation:spin 9s linear infinite;transform-origin:50% 50%}
+@keyframes spin{to{transform:rotate(360deg)}}
+.lede{color:var(--ink-soft);margin-top:10px;max-width:60ch;position:relative;z-index:1;font-size:.95rem}
+.parkline{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px;position:relative;z-index:1}
+.parkpill{font-family:var(--display);font-weight:700;font-size:.9rem;padding:5px 15px;border-radius:999px;
+  border:2.5px solid var(--line);box-shadow:var(--sticker-sm);background:var(--surface);color:var(--ink)}
+.parkpill.n{background:#C8F5DE}.parkpill.j{background:#CDE9FF}
+:root[data-theme="dark"] .parkpill.n{background:#15503A}
+:root[data-theme="dark"] .parkpill.j{background:#17395C}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .parkpill.n{background:#15503A}
+ :root:not([data-theme="light"]) .parkpill.j{background:#17395C}}
+
+/* ---- 進度：小燈泡 ---- */
+.rail{display:flex;gap:7px;align-items:center;justify-content:center;margin-block:18px 16px}
+.rail i{width:13px;height:13px;border-radius:50%;background:var(--surface);
+  border:2.5px solid var(--line);transition:.2s}
+.rail i.on{background:var(--yellow);transform:scale(1.35)}
+.rail i.done{background:var(--mint)}
+
+/* ---- 卡片 ---- */
+.card{background:var(--surface);border:3px solid var(--line);border-radius:var(--r);
+  box-shadow:var(--sticker);padding:20px;margin-bottom:18px}
+.card.flat{box-shadow:none;background:var(--surface-2);border-width:2.5px;border-style:dashed}
+.ticket{position:relative}
+.ticket::before,.ticket::after{content:"";position:absolute;top:50%;width:18px;height:18px;
+  background:var(--bg);border:3px solid var(--line);border-radius:50%;margin-top:-9px}
+.ticket::before{left:-12px;clip-path:inset(0 0 0 50%)}
+.ticket::after{right:-12px;clip-path:inset(0 50% 0 0)}
+.steplabel{display:inline-flex;align-items:center;gap:8px;font-family:var(--display);font-weight:700;
+  font-size:.86rem;background:var(--yellow);color:#2A2140;border:2.5px solid var(--line);
+  border-radius:999px;padding:3px 14px 3px 4px;box-shadow:var(--sticker-sm)}
+.steplabel span.num{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;
+  background:var(--line);color:#fff;font-size:.8rem}
+h2.q{font-size:1.35rem;font-weight:800;margin-top:12px}
+.hint{color:var(--ink-soft);font-size:.9rem;margin-top:7px}
+
+/* ---- 名字格 ---- */
+.namegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:9px;margin-top:16px}
+.nb{display:flex;align-items:center;gap:7px;background:var(--surface-2);border:2.5px solid var(--line);
+  border-radius:13px;padding:9px 9px;text-align:left;box-shadow:var(--sticker-sm);transition:.12s;min-width:0}
+.nb:hover{transform:translateY(-2px);box-shadow:0 5px 0 var(--line)}
+.nb:active{transform:translateY(2px);box-shadow:0 1px 0 var(--line)}
+.nb .seat{font-family:var(--display);font-weight:700;font-size:.74rem;background:var(--line);color:#fff;
+  border-radius:7px;padding:0 6px;flex:none}
+.nb .nm{font-weight:500;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nb[aria-pressed="true"]{background:var(--yellow)}
+.nb[disabled]{opacity:.35;cursor:not-allowed}
+
+/* ---- 膽量 ---- */
+.scale{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin-top:18px}
+.cg{border:2.5px solid var(--line);background:var(--surface-2);border-radius:16px;padding:12px 3px;
+  text-align:center;box-shadow:var(--sticker-sm);transition:.12s}
+.cg:hover{transform:translateY(-2px)}
+.cg .face{font-size:1.7rem;line-height:1.1}
+.cg .lab{font-size:.74rem;color:var(--ink-soft);margin-top:4px;font-weight:600}
+.cg[aria-pressed="true"]{background:var(--yellow)}
+.cg[aria-pressed="true"] .lab{color:#2A2140}
+
+/* ---- 類型卡 ---- */
+.cats{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:12px;margin-top:16px}
+.cat{border:3px solid var(--line);background:var(--surface-2);border-radius:18px;padding:14px;
+  text-align:left;box-shadow:var(--sticker-sm);transition:.12s;min-width:0;display:flex;flex-direction:column;gap:7px;
+  position:relative;overflow:hidden}
+.cat::before{content:"";position:absolute;inset:0 0 auto 0;height:7px;background:var(--ccol)}
+.cat:hover{transform:translateY(-3px);box-shadow:0 6px 0 var(--line)}
+.cat .ctop{display:flex;align-items:center;gap:10px;margin-top:4px}
+.cat .emo{font-size:1.8rem;flex:none;filter:drop-shadow(0 2px 0 rgba(0,0,0,.12))}
+.cat .cname{font-family:var(--display);font-weight:800;font-size:1.12rem}
+.cat .csub{font-size:.75rem;color:var(--ink-faint);font-weight:700;letter-spacing:.04em}
+.cat .cdesc{font-size:.87rem;color:var(--ink-soft)}
+.cat .ex{font-size:.79rem;color:var(--ink-faint);border-top:2px dotted var(--ink-faint);padding-top:8px;margin-top:2px}
+.cat .ex b{color:var(--ccol);font-weight:800}
+.cat[aria-pressed="true"]{background:var(--surface);
+  box-shadow:0 6px 0 var(--line),inset 0 0 0 4px var(--ccol)}
+.cat .tick{position:absolute;top:12px;right:10px;width:26px;height:26px;border-radius:50%;
+  background:var(--ccol);border:2.5px solid var(--line);color:#fff;display:none;
+  place-items:center;font-size:.9rem;font-weight:800}
+.cat[aria-pressed="true"] .tick{display:grid}
+
+/* ---- 玩伴貼紙 ---- */
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chip{border:2.5px solid var(--line);background:var(--surface-2);border-radius:999px;padding:6px 14px;
+  font-size:.92rem;font-weight:500;box-shadow:var(--sticker-sm);transition:.12s;display:flex;gap:6px;align-items:center}
+.chip:hover{transform:translateY(-2px)}
+.chip .s{font-size:.72rem;font-family:var(--display);font-weight:700;color:var(--ink-faint)}
+.chip[aria-pressed="true"]{color:#2A2140}
+.chip[aria-pressed="true"] .s{color:#2A2140;opacity:.6}
+.chip.n[aria-pressed="true"]{background:#8BEFC2}
+.chip.j[aria-pressed="true"]{background:#9DD8FF}
+.chip.a[aria-pressed="true"]{background:#E3DCF7}
+.private{display:inline-flex;align-items:center;gap:5px;font-size:.78rem;font-weight:700;
+  background:#EFE9FF;color:#4B3A8C;border:2px solid var(--line);border-radius:999px;padding:2px 11px}
+:root[data-theme="dark"] .private{background:#3A2F63;color:#E3DCF7}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .private{background:#3A2F63;color:#E3DCF7}}
+.conflict{display:inline-block;font-size:.74rem;font-weight:700;background:var(--yellow);color:#2A2140;
+  border:2px solid var(--line);border-radius:8px;padding:1px 8px;margin-top:6px}
+.whybox{display:grid;gap:12px;margin-top:16px}
+.why{background:var(--surface-2);border:2.5px dashed var(--line);border-radius:15px;padding:12px 14px}
+.whyhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.quick{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.qbtn{border:2px solid var(--line);background:var(--surface);border-radius:999px;padding:3px 11px;
+  font-size:.82rem;font-weight:500;transition:.12s}
+.qbtn:hover{background:#E3DCF7;transform:translateY(-1px)}
+.why textarea{margin-top:10px}
+
+.tag{font-family:var(--display);font-weight:700;font-size:.85rem;padding:3px 13px;border-radius:999px;
+  border:2.5px solid var(--line);box-shadow:var(--sticker-sm);color:#2A2140}
+.tag.n{background:#8BEFC2}.tag.j{background:#9DD8FF}
+.parkhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}
+
+textarea,input[type=text],input[type=password],input[type=url]{width:100%;font:inherit;background:var(--surface-2);
+  color:var(--ink);border:2.5px solid var(--line);border-radius:13px;padding:10px 13px;margin-top:12px;resize:vertical}
+
+/* ---- 按鈕 ---- */
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px;align-items:center}
+.btn{border:2.5px solid var(--line);border-radius:14px;padding:10px 22px;font-weight:700;
+  font-family:var(--display);font-size:1.02rem;background:var(--mint);color:#fff;
+  box-shadow:var(--sticker);transition:.12s}
+.btn:hover{transform:translateY(-2px);box-shadow:0 6px 0 var(--line)}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--line)}
+.btn[disabled]{opacity:.45;cursor:not-allowed;transform:none;box-shadow:var(--sticker)}
+.btn.go{background:var(--red)}
+.btn.sun{background:var(--yellow);color:#2A2140}
+.btn.sky{background:var(--blue)}
+.btn.ghost{background:var(--surface);color:var(--ink)}
+.btn.sm{padding:7px 15px;font-size:.9rem;border-radius:11px;box-shadow:var(--sticker-sm)}
+
+/* ---- 送出成功 ---- */
+.done{text-align:center;padding:14px 6px}
+.done .big{font-size:3.4rem;line-height:1;animation:pop .5s cubic-bezier(.2,1.6,.4,1)}
+@keyframes pop{0%{transform:scale(.3);opacity:0}100%{transform:scale(1);opacity:1}}
+.done h2{font-size:1.7rem;font-weight:800;margin-top:10px}
+.summary{display:grid;gap:9px;margin-top:16px;text-align:left}
+.srow{display:grid;grid-template-columns:92px 1fr;gap:10px;font-size:.93rem;align-items:start}
+.srow dt{color:var(--ink-faint);font-weight:700;font-size:.82rem;padding-top:2px}
+.srow dd{margin:0}
+
+/* ---- 老師區 ---- */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:11px;margin-top:14px}
+.stat{background:var(--surface-2);border:2.5px solid var(--line);border-radius:15px;padding:12px 14px;
+  box-shadow:var(--sticker-sm)}
+.stat b{display:block;font-family:var(--display);font-size:1.8rem;font-weight:800;
+  font-variant-numeric:tabular-nums;line-height:1.15}
+.stat b.txt{font-size:1.15rem;line-height:1.35;padding-block:4px}
+.stat span{font-size:.78rem;color:var(--ink-faint);font-weight:700}
+.groupgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(295px,1fr));gap:13px;margin-top:14px}
+.group{border:3px solid var(--line);border-radius:18px;padding:15px;background:var(--surface);
+  box-shadow:var(--sticker-sm);min-width:0;position:relative;overflow:hidden}
+.group::before{content:"";position:absolute;inset:0 0 auto 0;height:8px}
+.group.n::before{background:var(--nine)}.group.j::before{background:var(--jan)}
+.group h4{font-family:var(--display);font-size:1.1rem;font-weight:800;margin:6px 0 2px;
+  display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.group h4 em{font-style:normal;font-size:.76rem;color:var(--ink-faint);font-weight:600;font-family:var(--body)}
+.members{display:flex;flex-wrap:wrap;gap:5px;margin:10px 0}
+.members span{background:var(--surface-2);border:2px solid var(--line);border-radius:9px;
+  padding:2px 9px;font-size:.87rem;font-weight:500}
+.meta{font-size:.81rem;color:var(--ink-soft);display:grid;gap:3px;border-top:2px dotted var(--ink-faint);padding-top:9px}
+.meta b{color:var(--ink)}
+.plan{font-size:.81rem;color:var(--ink-soft);margin-top:8px;border-top:2px dotted var(--ink-faint);padding-top:9px}
+.plan ul{margin:5px 0 0;padding-left:19px}
+.plan li{margin-bottom:2px}
+.tablewrap{overflow-x:auto;margin-top:13px;border:2.5px solid var(--line);border-radius:15px}
+table{border-collapse:collapse;width:100%;font-size:.87rem;min-width:640px}
+th,td{text-align:left;padding:8px 11px;border-bottom:2px solid var(--surface-2);vertical-align:top}
+th{background:var(--yellow);color:#2A2140;font-size:.78rem;letter-spacing:.03em;font-weight:800}
+tr:last-child td{border-bottom:none}
+.miss{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.miss span{background:var(--surface);border:2px dashed var(--ink-faint);border-radius:9px;padding:2px 9px;font-size:.85rem}
+.note{background:var(--surface-2);border:2.5px solid var(--line);border-left-width:9px;border-radius:13px;
+  padding:11px 14px;font-size:.89rem;color:var(--ink-soft);margin-top:13px}
+.note.ok{border-left-color:var(--mint)}
+.note.warn{border-left-color:var(--yellow)}
+.note.bad{border-left-color:var(--red)}
+.note b{color:var(--ink)}
+.seg{display:inline-flex;background:var(--surface-2);border:2.5px solid var(--line);border-radius:14px;
+  padding:3px;gap:3px;flex-wrap:wrap;box-shadow:var(--sticker-sm)}
+.seg button{border:none;background:transparent;padding:6px 14px;border-radius:10px;font-weight:700;font-size:.9rem;
+  font-family:var(--display)}
+.seg button[aria-pressed="true"]{background:var(--grape);color:#fff}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(22px + env(safe-area-inset-bottom,0px));
+  background:var(--line);color:#fff;padding:11px 22px;border-radius:999px;font-weight:700;font-size:.92rem;
+  border:2.5px solid var(--line);z-index:60;box-shadow:0 4px 0 rgba(0,0,0,.25);max-width:88vw;text-align:center}
+footer{margin-top:34px;padding-top:16px;border-top:3px dotted var(--ink-faint);color:var(--ink-faint);
+  font-size:.84rem;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center}
+footer button{background:none;border:none;color:var(--ink-soft);text-decoration:underline;font-size:.84rem;padding:0;
+  font-weight:600}
+.ref{font-size:.79rem;color:var(--ink-faint);margin-top:12px}
+.ref a{color:var(--blue)}
+details.allrides{margin-top:16px;background:var(--surface-2);border:2.5px dashed var(--line);
+  border-radius:15px;padding:12px 15px}
+details.allrides summary{cursor:pointer;font-weight:700;font-size:.92rem;font-family:var(--display)}
+details.allrides .ridecat{margin-top:10px;font-size:.86rem}
+details.allrides .ridecat b{display:block;margin-bottom:2px}
+details.allrides .ridecat p{color:var(--ink-soft)}
+label.filebtn{display:inline-block}
+label.filebtn input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (max-width:420px){
+  .scale{gap:6px}.cg .face{font-size:1.4rem}.cg .lab{font-size:.68rem}
+  .card{padding:16px}
+}
+</style>
+</head>
+<body>
+
+<div class="bunting" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+<div class="wrap" id="root"></div>
+
+<script>
+/* ==========================================================================
+   ★★★ 老師設定區 ★★★  只要改下面這兩行，其他都不用動。
+   詳細步驟請看同資料夾的 README.md
+   ========================================================================== */
+const CONFIG = {
+  // Google Apps Script 部署後得到的「網頁應用程式網址」，長得像
+  // https://script.google.com/macros/s/AKfycb.../exec
+  endpoint: '',
+  // 老師專區的密碼，要和 Apps Script 裡的 TEACHER_KEY 一模一樣
+  teacherKey: ''
+};
+/* ========================================================================== */
+
+/* ============ 班級資料 ============ */
+const CLASS_INFO = {school:'臺北市敦化國民小學', year:'115學年度', klass:'六年九班'};
+const STUDENTS = [
+ [1,'蔡禮陽'],[2,'曾恆駒'],[3,'李沅叡'],[4,'朱珥睿'],[5,'袁義庭'],[7,'蕭宇佑'],[8,'葉宇宸'],
+ [9,'詹惟傑'],[10,'黃品文'],[11,'洪翊嘉'],[12,'陳弘曄'],[13,'林華暐'],[14,'李凱森'],[15,'李軒宇'],
+ [16,'賈方綸'],[21,'游智貽'],[22,'嚴子茵'],[23,'陳柚君'],[24,'江靖璿'],[25,'王紫芃'],[26,'吳冠萱'],
+ [27,'徐韵甯'],[28,'許媛稀'],[30,'王郁薰'],[31,'勤詠琁'],[32,'張瓊之'],[33,'李晴萱']
+];
+const NAME_OF = Object.fromEntries(STUDENTS.map(s=>[s[0],s[1]]));
+const SEATS = STUDENTS.map(s=>s[0]);
+
+/* ============ 設施類型 ============ */
+const CATS = [
+ {id:'thrill', emoji:'🎢', name:'心臟很大顆', sub:'極限刺激', col:'var(--red)',
+  desc:'雲霄飛車、自由落體。越高越快越倒掛，越開心。'},
+ {id:'water', emoji:'🌊', name:'濕了也不怕', sub:'衝水設施', col:'var(--blue)',
+  desc:'俯衝噴水花、水槍對戰。要有換洗衣物的覺悟。'},
+ {id:'horror', emoji:'👻', name:'愛被嚇', sub:'驚悚探險', col:'var(--grape)',
+  desc:'鬼屋、黑暗設施、VR 驚嚇。怕黑怕鬼的不要勉強。'},
+ {id:'gentle', emoji:'🎡', name:'歡樂溫和', sub:'輕鬆好玩', col:'var(--mint)',
+  desc:'摩天輪、碰碰車、小火車。好玩但不會嚇到腿軟。'},
+ {id:'scenic', emoji:'🌸', name:'美景拍照', sub:'散步觀景', col:'var(--pink)',
+  desc:'纜車、花園、湖景。走走停停、拍很多照片。'},
+ {id:'culture', emoji:'🎭', name:'表演手作', sub:'文化體驗', col:'var(--orange)',
+  desc:'看表演、逛博物館、DIY 體驗。坐著看也很享受。'},
+ {id:'food', emoji:'🍧', name:'吃吃喝喝', sub:'美食購物', col:'var(--yellow)',
+  desc:'美食街、紀念品店。把零用錢花光也甘願。'}
+];
+const CAT_OF = Object.fromEntries(CATS.map(c=>[c.id,c]));
+
+/* ============ 兩園設施 ============ */
+const PARKS = {
+ nine:{key:'nine', name:'九族文化村', short:'九族', cls:'n',
+  site:'https://www.nine.com.tw/page/about/index.aspx?kind=114&lang=TW',
+  rides:{
+   thrill:['馬雅探險（懸吊式雲霄飛車，11 層樓俯衝＋360° 翻轉，限 130cm 以上）','UFO 幽浮歷險（85 公尺自由落體，全台最高，時速 105km，限 130cm 以上）','太空山（室內雲霄飛車，限 120cm 以上）','海盜船／VR 風暴幽靈船（限 120cm 以上）','宇宙迴旋'],
+   water:['金礦山探險（獨木舟衝下 15 公尺，水花超大）','無敵艦隊（水上雲霄飛車，爬升 30 公尺後倒衝，限 100cm 以上）','大漩渦（急流泛舟捲進漩渦，限 110cm 以上）','水戰船（水槍對戰，互相噴）','水立方噴泉戲水廣場（夏季）'],
+   horror:['VR 風暴幽靈船','侏羅紀探險（恐龍黑暗設施）','動感電影院','嘉年華特區'],
+   gentle:['碰碰車','音樂馬車（旋轉木馬）','老爺車','單軌電車','轉轉車','熱氣球','跳跳蛙（限 100cm 以上）','皇家火車','飛行船','水沙連小火車'],
+   scenic:['日月潭纜車（空中俯瞰日月潭，門票已含）','九族纜車 Skyline','觀山樓','水沙連歐洲花園＆麗宮','櫻花大道・櫻花林・櫻花湖','榮華湖・松園・天理園','石雕森林步道'],
+   culture:['娜魯灣劇場（原住民歌舞表演）','水劇場','九族文化博物館','原住民部落景觀區（各族傳統建築）','琉璃珠工坊 DIY','紅柿租衣坊（原住民服裝體驗）','吹箭場・賽德克射箭場','萬山神石'],
+   food:['廣場市集','等路大街','阿拉丁美食區','馬雅餐廳・金礦山餐廳・西班牙餐廳','麗宮餐廳','小米酒故事館','出口紀念品館']
+  }},
+ jan:{key:'jan', name:'劍湖山世界', short:'劍湖山', cls:'j',
+  site:'https://www.janfusun.com.tw/html/page/index.php?unid=2&cid=5&cid2=102&pid=295',
+  rides:{
+   thrill:['飛天潛艇 G5（近 90° 俯衝入洞，時速 110km、5G，限 140cm 以上）','衝瘋飛車（814 公尺倒掛懸吊，360° 翻滾，限 140cm 以上）','擎天飛梭（65 公尺雙塔彈射＋自由落體，限 140cm 以上）','海神號（大海盜船，限 110cm 以上）','天女散花（限 110cm 以上）','迴旋磁場（限 120cm 以上）'],
+   horror:['驚嚇列車（AR 鬼屋，8 大恐怖場景，限 100cm 以上、13 歲以下需陪同）','VR Dino 飛越恐龍谷（限 110cm 以上）','魔鏡迷宮'],
+   water:['尖叫無底洞（3 層樓垂直滑水道，限 140cm 以上・夏季）','龍捲風（7 層樓大水盆旋轉，限 120cm 以上・夏季）','大碗公（360° 旋轉滑水道，限 120cm 以上・夏季）','小威漂漂河（限 110cm 以上・夏季）','600 秒維京巨浪造浪池（夏季）','大船塢水戰場（夏季）'],
+   gentle:['幸福摩天輪（約 30 層樓高，園區地標）','彩虹列車','叢林溜滑梯（限 110cm 以上）','咕咕飛車','皇家馬車','嘟嘟車','飛天法寶','寶藏哈哈列車','百戰嚕啦啦球池','5D 冒險劇院','魔奇釣魚場'],
+   scenic:['幸福摩天輪賞景','和園紀念花園','渡假花坊・百石花坡','梅園・彩虹步道','鳳梨型吊橋','環境教育園區','咖啡博覽館'],
+   culture:['彩虹劇場《歡樂花樣嘉年華》（小丑魔術，約 40 分鐘）','劍湖山博物館','名偵探柯南主題樂園（期間限定・摩天輪主題導覽）'],
+   food:['柯南主題餐廳・主題餐車','柯南主題賣店','KU 代美食廣場','KU COFFEE 美學館','咖啡茶博覽館','寶藏村商店・彩色小熊紀念品']
+  }}
+};
+const PARK_LIST=[PARKS.nine,PARKS.jan];
+const WHY_SUGGESTIONS=['在一起會分心','常常吵架','之前有不愉快','想認識別的同學','想玩的東西差很多','跟他一組會不自在'];
+const COURAGE_FACES=[
+ {v:1,face:'🫣',lab:'超級膽小'},{v:2,face:'😅',lab:'有點怕'},{v:3,face:'🙂',lab:'普通'},
+ {v:4,face:'😎',lab:'蠻敢的'},{v:5,face:'🔥',lab:'什麼都敢'}
+];
+
+/* ============ 配對演算法 ============ */
+const APART=(a,b)=>(a.avoid||[]).includes(b.seat)||(b.avoid||[]).includes(a.seat);
+function pairScore(a,b,park){
+  let s=0;
+  if(APART(a,b)) s-=100;                       // 想避免同組：幾乎等同硬性條件
+  const aw=(a.mates[park]||[]).includes(b.seat), bw=(b.mates[park]||[]).includes(a.seat);
+  if(aw&&bw) s+=7; else if(aw||bw) s+=3;
+  const A=new Set(a.cats), B=new Set(b.cats);
+  let inter=0; A.forEach(x=>{if(B.has(x))inter++});
+  const uni=new Set([...a.cats,...b.cats]).size||1;
+  s+=5*(inter/uni);
+  s+=2*(1-Math.abs(a.courage-b.courage)/4);
+  return s;
+}
+function buildGroups(list,park,size){
+  const pool=list.slice();
+  if(!pool.length) return [];
+  if(pool.length<=size) return [pool];
+  const groups=[];
+  while(pool.length>0){
+    if(pool.length<=size){groups.push(pool.splice(0));break;}
+    let bi=0,bj=1,bs=-Infinity;
+    for(let i=0;i<pool.length;i++)for(let j=i+1;j<pool.length;j++){
+      const sc=pairScore(pool[i],pool[j],park);
+      if(sc>bs){bs=sc;bi=i;bj=j;}
+    }
+    const g=[pool[bi],pool[bj]];
+    pool.splice(Math.max(bi,bj),1); pool.splice(Math.min(bi,bj),1);
+    while(g.length<size&&pool.length>0){
+      let k=0,ks=-Infinity;
+      pool.forEach((p,idx)=>{
+        const avg=g.reduce((t,m)=>t+pairScore(p,m,park),0)/g.length;
+        if(avg>ks){ks=avg;k=idx;}
+      });
+      g.push(pool.splice(k,1)[0]);
+    }
+    groups.push(g);
+  }
+  if(groups.length>1){
+    const last=groups[groups.length-1];
+    if(last.length<3){
+      groups.pop();
+      last.forEach(p=>{
+        let best=0,bs=-Infinity;
+        groups.forEach((g,i)=>{
+          const avg=g.reduce((t,m)=>t+pairScore(p,m,park),0)/g.length - g.length*0.35;
+          if(avg>bs){bs=avg;best=i;}
+        });
+        groups[best].push(p);
+      });
+    }
+  }
+  return groups;
+}
+function groupInfo(g,park){
+  const count={}; g.forEach(m=>m.cats.forEach(c=>count[c]=(count[c]||0)+1));
+  const top=Object.entries(count).sort((a,b)=>b[1]-a[1]);
+  const shared=top.filter(([,n])=>n===g.length).map(([c])=>c);
+  const main=top.slice(0,3).map(([c])=>c);
+  const avg=g.reduce((t,m)=>t+m.courage,0)/g.length;
+  let wish=0,wishTotal=0;
+  g.forEach(m=>{(m.mates[park]||[]).forEach(w=>{wishTotal++;if(g.some(x=>x.seat===w))wish++;});});
+  let clash=0;
+  for(let i=0;i<g.length;i++)for(let j=i+1;j<g.length;j++) if(APART(g[i],g[j])) clash++;
+  const rides=[];
+  main.forEach(c=>{(PARKS[park].rides[c]||[]).slice(0,2).forEach(r=>rides.push({cat:c,r}));});
+  return {shared,main,avg,wish,wishTotal,clash,rides};
+}
+/* 全班「想先分開玩」有多少真的被分開了 */
+function apartStats(entries,groups){
+  let total=0,kept=0;
+  entries.forEach(a=>(a.avoid||[]).forEach(s=>{
+    const b=entries.find(x=>x.seat===s); if(!b) return;
+    total++;
+    const ga=groups.find(g=>g.some(m=>m.seat===a.seat));
+    if(ga && !ga.some(m=>m.seat===s)) kept++;
+  }));
+  return {total,kept};
+}
+
+/* ============ 狀態 ============ */
+const LS_DRAFT='pm_draft', LS_SENT='pm_sent', LS_KEY='pm_key', LS_CACHE='pm_cache';
+const DEMO = !CONFIG.endpoint;
+let state={
+  view:'student', step:0, sending:false,
+  draft:{seat:null,courage:3,cats:[],mates:{nine:[],jan:[]},avoid:[],why:{},note:''},
+  sent:null,
+  roster:{},                       // seat -> entry（老師端）
+  key:'', loading:false, loadErr:'', showPrivate:false,
+  size:5, toast:null
+};
+function lsGet(k,fb){try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch(e){return fb;}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+Object.assign(state.draft, lsGet(LS_DRAFT,{}));
+if(!state.draft.mates) state.draft.mates={nine:[],jan:[]};
+if(!Array.isArray(state.draft.avoid)) state.draft.avoid=[];
+if(!state.draft.why || typeof state.draft.why!=='object') state.draft.why={};
+state.sent = lsGet(LS_SENT,null);
+state.key  = lsGet(LS_KEY, CONFIG.teacherKey||'');
+state.roster = lsGet(LS_CACHE,{});
+const saveDraft=()=>lsSet(LS_DRAFT,state.draft);
+function toast(msg){state.toast=msg;render();clearTimeout(window.__t);
+  window.__t=setTimeout(()=>{state.toast=null;render();},2600);}
+
+/* ============ 送出 / 讀取 ============ */
+function normalise(r){
+  const seat=Number(r.seat);
+  if(!NAME_OF[seat]) return null;
+  const clean=a=>[...new Set((a||[]).map(Number).filter(n=>NAME_OF[n]&&n!==seat))];
+  // 想避免同組：座號陣列 + 對應原因陣列（或 why 物件）
+  const rawA=(r.avoid||[]).map(Number), rawW=r.avoidWhy||[];
+  const why={}, avoid=[];
+  rawA.forEach((n,i)=>{
+    if(!NAME_OF[n]||n===seat||avoid.includes(n)) return;
+    avoid.push(n);
+    const txt=(r.why&&r.why[n]!==undefined)?r.why[n]:rawW[i];
+    why[n]=String(txt||'').replace(/[|]/g,'／').trim().slice(0,60);
+  });
+  return {seat, name:NAME_OF[seat], courage:Math.min(5,Math.max(1,Number(r.courage)||3)),
+    cats:[...new Set((r.cats||[]).filter(c=>CAT_OF[c]))],
+    mates:{nine:clean(r.nine), jan:clean(r.jan)}, avoid:avoid, why:why, note:String(r.note||'')};
+}
+async function sendAnswer(payload){
+  if(DEMO){
+    const e=normalise(payload); if(e){state.roster[e.seat]=e; lsSet(LS_CACHE,state.roster);}
+    return {ok:true, demo:true};
+  }
+  const res=await fetch(CONFIG.endpoint,{method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(payload)});
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  let data={}; try{data=await res.json();}catch(e){}
+  if(data && data.ok===false) throw new Error(data.error||'伺服器回報失敗');
+  return {ok:true};
+}
+async function loadRoster(){
+  if(DEMO){ state.roster=lsGet(LS_CACHE,{}); return; }
+  state.loading=true; state.loadErr=''; render();
+  try{
+    const url=CONFIG.endpoint+(CONFIG.endpoint.includes('?')?'&':'?')+
+      'action=list&key='+encodeURIComponent(state.key);
+    const res=await fetch(url);
+    const data=await res.json();
+    if(!data.ok) throw new Error(data.error==='bad key'?'密碼不對':(data.error||'讀取失敗'));
+    const next={};
+    (data.rows||[]).forEach(r=>{const e=normalise(r); if(e) next[e.seat]=e;});
+    state.roster=next; lsSet(LS_CACHE,next); lsSet(LS_KEY,state.key);
+  }catch(err){ state.loadErr=String(err.message||err); }
+  state.loading=false; render();
+}
+
+/* ============ 小工具 ============ */
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const catChip=id=>{const c=CAT_OF[id];return c?`<span style="color:${c.col};font-weight:700">${c.emoji} ${c.name}</span>`:'';};
+function parseCSV(text){
+  const rows=[];let row=[],cell='',q=false;
+  text=text.replace(/^﻿/,'');
+  for(let i=0;i<text.length;i++){const ch=text[i];
+    if(q){ if(ch==='"'){ if(text[i+1]==='"'){cell+='"';i++;} else q=false; } else cell+=ch; }
+    else if(ch==='"') q=true;
+    else if(ch===','){row.push(cell);cell='';}
+    else if(ch==='\n'){row.push(cell);rows.push(row);row=[];cell='';}
+    else if(ch!=='\r') cell+=ch;
+  }
+  if(cell||row.length){row.push(cell);rows.push(row);}
+  return rows.filter(r=>r.some(c=>c.trim()!==''));
+}
+
+/* ============ 學生頁 ============ */
+function studentView(){
+  if(state.sent) return doneCard();
+  const d=state.draft;
+  const rail=`<div class="rail" role="presentation">${Array.from({length:7},(_,i)=>
+    `<i class="${i<state.step?'done':i===state.step?'on':''}"></i>`).join('')}</div>`;
+  let body='';
+  if(state.step===0){
+    body=`<div class="card ticket">
+      ${stepLabel(1)}<h2 class="q">🎟️ 你是誰呀？</h2>
+      <p class="hint">點一下你的名字。整份七個步驟、大約兩分鐘，填完直接送出給老師，不用抄任何東西。</p>
+      <div class="namegrid">${STUDENTS.map(([s,n])=>
+        `<button class="nb" data-act="pickme" data-seat="${s}" aria-pressed="${d.seat===s}">
+          <span class="seat">${s}</span><span class="nm">${n}</span></button>`).join('')}</div>
+      ${d.seat?`<div class="note ok">嗨，<b>${esc(NAME_OF[d.seat])}</b>！準備好就按下一步 🚀</div>`:''}
+      <div class="row"><button class="btn go" data-act="next" ${d.seat?'':'disabled'}>下一步 →</button></div>
+    </div>`;
+  } else if(state.step===1){
+    body=`<div class="card">
+      ${stepLabel(2)}<h2 class="q">😱 你的膽量有多大？</h2>
+      <p class="hint">誠實就好，沒有標準答案。敢玩和不敢玩都很正常，老師只是想知道怎麼安排你才會自在，不用硬上不敢玩的設施。</p>
+      <div class="scale">${COURAGE_FACES.map(c=>
+        `<button class="cg" data-act="courage" data-v="${c.v}" aria-pressed="${d.courage===c.v}">
+          <div class="face">${c.face}</div><div class="lab">${c.lab}</div></button>`).join('')}</div>
+      ${navRow()}
+    </div>`;
+  } else if(state.step===2){
+    body=`<div class="card">
+      ${stepLabel(3)}<h2 class="q">🎠 你想玩哪幾種設施？</h2>
+      <p class="hint">可以複選，至少選一種。卡片下面列的是兩個樂園裡真的有的設施。</p>
+      <div class="cats">${CATS.map(c=>{
+        const ex=`<b>九族</b> ${esc(PARKS.nine.rides[c.id][0].split('（')[0])}　<b>劍湖山</b> ${esc(PARKS.jan.rides[c.id][0].split('（')[0])}`;
+        return `<button class="cat" style="--ccol:${c.col}" data-act="cat" data-id="${c.id}" aria-pressed="${d.cats.includes(c.id)}">
+          <span class="tick">✓</span>
+          <span class="ctop"><span class="emo">${c.emoji}</span>
+            <span><span class="cname">${c.name}</span><br><span class="csub">${c.sub}</span></span></span>
+          <span class="cdesc">${c.desc}</span><span class="ex">${ex}</span></button>`;}).join('')}</div>
+      ${ridesAccordion()}
+      ${navRow(d.cats.length>0)}
+    </div>`;
+  } else if(state.step===3||state.step===4){
+    const p=state.step===3?PARKS.nine:PARKS.jan;
+    const sel=d.mates[p.key];
+    body=`<div class="card">
+      ${stepLabel(state.step+1)}
+      <h2 class="q">${p.key==='nine'?'🌿':'🎡'} 在${p.name}想跟誰一起玩？</h2>
+      <div class="parkhead"><span class="tag ${p.cls}">${p.name}</span></div>
+      <p class="hint">可以複選，也可以一個都不選（那就依你喜歡的設施類型安排）。想到誰就點誰，老師會盡量安排，但組別人數有限，不一定每個都排得進來。</p>
+      <div class="chips">${STUDENTS.filter(([s])=>s!==d.seat).map(([s,n])=>
+        `<button class="chip ${p.cls}" data-act="mate" data-park="${p.key}" data-seat="${s}" aria-pressed="${sel.includes(s)}">
+          <span class="s">${s}</span>${n}</button>`).join('')}</div>
+      <p class="hint" style="margin-top:14px">已選 <b>${sel.length}</b> 人${sel.length?'：'+sel.map(s=>esc(NAME_OF[s])).join('、'):''}</p>
+      ${navRow()}
+    </div>`;
+  } else if(state.step===5){
+    const sel=d.avoid;
+    const ready=sel.every(s=>(d.why[s]||'').trim().length>=2);
+    body=`<div class="card">
+      ${stepLabel(6)}
+      <h2 class="q">🙅 這次想避免跟誰同一組？</h2>
+      <div class="parkhead"><span class="private">🔒 只有老師看得到，不會公布，也不會告訴對方</span></div>
+      <p class="hint"><b>沒有的話就空著</b>，直接按下一步。有的話請點出同學，<b>並寫下原因</b>——老師要知道原因才能判斷怎麼安排。</p>
+      <div class="chips">${STUDENTS.filter(([s])=>s!==d.seat).map(([s,n])=>
+        `<button class="chip a" data-act="avoid" data-seat="${s}" aria-pressed="${sel.includes(s)}">
+          <span class="s">${s}</span>${n}</button>`).join('')}</div>
+      ${sel.length?`<div class="whybox">${sel.map(s=>`
+        <div class="why">
+          <div class="whyhead"><span class="tag" style="background:#E3DCF7">${s} ${esc(NAME_OF[s])}</span>
+            <span class="hint" style="margin:0">為什麼想避免同組？</span></div>
+          <div class="quick">${WHY_SUGGESTIONS.map(w=>
+            `<button class="qbtn" data-act="whyfill" data-seat="${s}" data-text="${esc(w)}">${esc(w)}</button>`).join('')}</div>
+          <textarea class="whyin" data-seat="${s}" rows="2" maxlength="60"
+            placeholder="點上面的句子，或自己寫（最多 60 字）">${esc(d.why[s]||'')}</textarea>
+        </div>`).join('')}</div>
+        ${ready?'':'<div class="note bad">每一位都要寫原因才能繼續（至少 2 個字）。</div>'}`
+      :`<p class="hint" style="margin-top:14px">目前沒有選任何人 👍</p>`}
+      ${navRow(ready)}
+    </div>`;
+  } else {
+    body=`<div class="card">
+      ${stepLabel(7)}<h2 class="q">💬 還有什麼想跟老師說？</h2>
+      <p class="hint">非必填。例如「我會暈車」「一定要玩到 G5」「午餐想跟小隊一起吃」。最多 80 字。</p>
+      <textarea id="noteBox" rows="3" maxlength="80" placeholder="想說什麼都可以⋯⋯">${esc(d.note||'')}</textarea>
+      <div class="card flat" style="margin-top:18px;margin-bottom:0">
+        <h3 style="font-size:1.05rem;font-weight:800">✅ 最後確認一下</h3>
+        <dl class="summary">
+          <div class="srow"><dt>姓名</dt><dd>${d.seat?`${d.seat} 號　${esc(NAME_OF[d.seat])}`:'—'}</dd></div>
+          <div class="srow"><dt>膽量</dt><dd>${COURAGE_FACES[d.courage-1].face} ${COURAGE_FACES[d.courage-1].lab}</dd></div>
+          <div class="srow"><dt>喜歡類型</dt><dd>${d.cats.map(catChip).join('　')||'<span style="color:var(--ink-faint)">未選</span>'}</dd></div>
+          <div class="srow"><dt>九族玩伴</dt><dd>${d.mates.nine.map(s=>esc(NAME_OF[s])).join('、')||'<span style="color:var(--ink-faint)">沒有特別指定</span>'}</dd></div>
+          <div class="srow"><dt>劍湖山玩伴</dt><dd>${d.mates.jan.map(s=>esc(NAME_OF[s])).join('、')||'<span style="color:var(--ink-faint)">沒有特別指定</span>'}</dd></div>
+          <div class="srow"><dt>🔒 避免同組</dt><dd>${d.avoid.map(s=>esc(NAME_OF[s])+'（'+esc((d.why[s]||'').trim())+'）').join('、')||'<span style="color:var(--ink-faint)">沒有選任何人</span>'}</dd></div>
+        </dl>
+      </div>
+      <div class="row">
+        <button class="btn ghost" data-act="back">← 上一步</button>
+        <button class="btn go" data-act="submit" ${state.sending?'disabled':''}>${state.sending?'送出中⋯':'🎉 送出給老師'}</button>
+      </div>
+      ${DEMO?`<div class="note warn"><b>示範模式</b>：老師還沒設定收件網址，現在送出只會暫存在這台裝置上。</div>`:''}
+    </div>`;
+  }
+  return rail+body;
+}
+const stepLabel=n=>`<div class="steplabel"><span class="num">${n}</span>步驟 ${n} / 7</div>`;
+const navRow=(ok=true)=>`<div class="row">
+  <button class="btn ghost" data-act="back">← 上一步</button>
+  <button class="btn go" data-act="next" ${ok?'':'disabled'}>下一步 →</button></div>`;
+function ridesAccordion(){
+  return `<details class="allrides"><summary>🔍 看看每種類型包含哪些設施（完整清單）</summary>
+    ${PARK_LIST.map(p=>`<div style="margin-top:14px"><span class="tag ${p.cls}">${p.name}</span>
+      ${CATS.map(c=>`<div class="ridecat"><b style="color:${c.col}">${c.emoji} ${c.name}</b>
+        <p>${p.rides[c.id].map(esc).join('、')}</p></div>`).join('')}</div>`).join('')}
+    <p class="ref">設施與身高限制整理自兩園官網與遊記，出發前請以官網公告為準：
+      <a href="${PARKS.nine.site}" target="_blank" rel="noopener">九族文化村</a>
+      <a href="${PARKS.jan.site}" target="_blank" rel="noopener">劍湖山世界</a></p></details>`;
+}
+function doneCard(){
+  const s=state.sent;
+  return `<div class="card ticket">
+    <div class="done">
+      <div class="big">🎊</div>
+      <h2>送出完成！</h2>
+      <p class="hint">${esc(s.name)}，你的答案已經送給老師了，不用再做任何事。</p>
+    </div>
+    <dl class="summary" style="margin-top:18px">
+      <div class="srow"><dt>膽量</dt><dd>${COURAGE_FACES[s.courage-1].face} ${COURAGE_FACES[s.courage-1].lab}</dd></div>
+      <div class="srow"><dt>喜歡類型</dt><dd>${s.cats.map(catChip).join('　')}</dd></div>
+      <div class="srow"><dt>九族玩伴</dt><dd>${s.mates.nine.map(x=>esc(NAME_OF[x])).join('、')||'沒有特別指定'}</dd></div>
+      <div class="srow"><dt>劍湖山玩伴</dt><dd>${s.mates.jan.map(x=>esc(NAME_OF[x])).join('、')||'沒有特別指定'}</dd></div>
+      ${s.avoid.length?`<div class="srow"><dt>🔒 避免同組</dt><dd><span class="private">已私下告訴老師（${s.avoid.length} 人）</span></dd></div>`:''}
+      ${s.note?`<div class="srow"><dt>想說的話</dt><dd>${esc(s.note)}</dd></div>`:''}
+    </dl>
+    <div class="row"><button class="btn ghost sm" data-act="redo">想改答案，重填一次</button></div>
+  </div>`;
+}
+
+/* ============ 老師頁 ============ */
+function teacherView(){
+  const entries=SEATS.map(s=>state.roster[s]).filter(Boolean);
+  const done=entries.length, total=STUDENTS.length;
+  const missing=STUDENTS.filter(([s])=>!state.roster[s]);
+  const catCount={}; entries.forEach(e=>e.cats.forEach(c=>catCount[c]=(catCount[c]||0)+1));
+  const hot=Object.entries(catCount).sort((a,b)=>b[1]-a[1])[0];
+  const lonely=PARK_LIST.map(p=>({p,list:entries.filter(e=>
+      !entries.some(o=>o.seat!==e.seat&&(o.mates[p.key]||[]).includes(e.seat)))}));
+
+  const apartAll={total:0,kept:0};
+  const groupsHTML = done>=2 ? PARK_LIST.map(p=>{
+    const gs=buildGroups(entries,p.key,state.size);
+    const ap=apartStats(entries,gs); apartAll.total+=ap.total; apartAll.kept+=ap.kept;
+    return `<div class="card">
+      <div class="parkhead" style="margin-top:0"><span class="tag ${p.cls}">${p.name}</span>
+        <h3 style="font-size:1.15rem;font-weight:800">分組建議（${gs.length} 組）</h3></div>
+      <div class="groupgrid">${gs.map((g,i)=>{
+        const info=groupInfo(g,p.key);
+        return `<div class="group ${p.cls}">
+          <h4><span>第 ${i+1} 組</span><em>${g.length} 人・平均膽量 ${info.avg.toFixed(1)}</em></h4>
+          <div class="members">${g.map(m=>`<span>${m.seat} ${esc(m.name)}</span>`).join('')}</div>
+          ${info.clash?`<div class="conflict">⚠️ 這組有 ${info.clash} 對希望避免同組，建議手動微調</div>`:''}
+          <div class="meta">
+            <div>共同喜好：<b>${info.main.map(c=>CAT_OF[c].emoji+CAT_OF[c].name).join('、')||'—'}</b></div>
+            <div>全組都想玩：<b>${info.shared.map(c=>CAT_OF[c].name).join('、')||'—'}</b></div>
+            <div>玩伴心願達成：<b>${info.wishTotal?Math.round(info.wish/info.wishTotal*100):100}%</b>（${info.wish}/${info.wishTotal}）</div>
+          </div>
+          <div class="plan"><b>建議路線</b><ul>${info.rides.slice(0,6).map(r=>
+            `<li><span style="color:${CAT_OF[r.cat].col}">${CAT_OF[r.cat].emoji}</span> ${esc(r.r.split('（')[0])}</li>`).join('')}</ul></div>
+        </div>`;}).join('')}</div></div>`;
+  }).join('') : '';
+  const apartPct = apartAll.total ? Math.round(apartAll.kept/apartAll.total*100) : null;
+
+  return `<div class="card">
+    <div class="parkhead" style="justify-content:space-between;margin-top:0">
+      <h2 class="q" style="margin:0">🧑‍🏫 老師專區</h2>
+      <div class="seg">${[4,5,6].map(n=>
+        `<button data-act="size" data-n="${n}" aria-pressed="${state.size===n}">每組 ${n} 人</button>`).join('')}</div>
+    </div>
+    ${DEMO?`<div class="note warn"><b>示範模式</b>：還沒填 <code>CONFIG.endpoint</code>，學生送出的答案只會留在他們自己的裝置上。
+      請依 README 部署 Google Apps Script 後，把網址填進 <code>index.html</code> 最上面的設定區。</div>`:`
+    <div class="row" style="margin-top:12px">
+      <input type="password" id="keyBox" placeholder="老師密碼" value="${esc(state.key)}"
+        style="margin-top:0;max-width:220px">
+      <button class="btn sky sm" data-act="reload" ${state.loading?'disabled':''}>${state.loading?'讀取中⋯':'↻ 讀取最新回覆'}</button>
+    </div>
+    ${state.loadErr?`<div class="note bad"><b>讀不到資料：</b>${esc(state.loadErr)}</div>`:''}`}
+
+    <div class="stats">
+      <div class="stat"><b>${done} / ${total}</b><span>已回收</span></div>
+      <div class="stat"><b>${missing.length}</b><span>還沒交</span></div>
+      <div class="stat"><b>${done?Math.round(entries.reduce((t,e)=>t+e.courage,0)/done*10)/10:'—'}</b><span>全班平均膽量</span></div>
+      <div class="stat"><b class="txt">${hot?CAT_OF[hot[0]].emoji+' '+CAT_OF[hot[0]].name:'—'}</b><span>最熱門類型</span></div>
+      ${apartPct!==null?`<div class="stat"><b>${apartPct}%</b><span>🔒 避免同組達成</span></div>`:''}
+    </div>
+    ${missing.length?`<div class="note"><b>還沒交的同學：</b><div class="miss">${missing.map(([s,n])=>`<span>${s} ${n}</span>`).join('')}</div></div>`
+      :`<div class="note ok">全班 ${total} 人都交了 🎉 可以直接分組。</div>`}
+
+    <div class="row">
+      <label class="filebtn btn ghost sm">📂 匯入試算表 CSV
+        <input type="file" accept=".csv,text/csv" data-act="importcsv"></label>
+      ${done?`<button class="btn ghost sm" data-act="clear">清空目前畫面資料</button>`:''}
+    </div>
+    <p class="hint">沒網路或臨時要改，也可以把 Google 試算表「下載成 CSV」後從這裡匯入。</p>
+  </div>
+
+  ${groupsHTML}
+
+  ${done?`<div class="card">
+    <div class="parkhead" style="justify-content:space-between;margin-top:0">
+      <h3 style="font-size:1.15rem;font-weight:800">📋 全班填答一覽</h3>
+      <button class="btn ghost sm" data-act="togglePrivate">${state.showPrivate?'🙈 收起「避免同組」':'👁️ 顯示「避免同組」'}</button>
+    </div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>座號</th><th>姓名</th><th>膽量</th><th>喜歡類型</th><th>九族玩伴</th><th>劍湖山玩伴</th>${state.showPrivate?'<th>🔒 避免同組（含原因）</th>':''}<th>備註</th></tr></thead>
+      <tbody>${entries.map(e=>`<tr>
+        <td>${e.seat}</td><td>${esc(e.name)}</td>
+        <td>${COURAGE_FACES[e.courage-1].face} ${e.courage}</td>
+        <td>${e.cats.map(c=>CAT_OF[c].emoji+CAT_OF[c].name).join('、')}</td>
+        <td>${e.mates.nine.map(s=>esc(NAME_OF[s])).join('、')||'—'}</td>
+        <td>${e.mates.jan.map(s=>esc(NAME_OF[s])).join('、')||'—'}</td>
+        ${state.showPrivate?`<td>${e.avoid.map(s=>`<b>${esc(NAME_OF[s])}</b>：${esc(e.why[s]||'（未寫原因）')}`).join('<br>')||'—'}</td>`:''}
+        <td>${esc(e.note)||'—'}</td></tr>`).join('')}</tbody>
+    </table></div>
+    <div class="note"><span class="private">🔒 保密</span>　「避免同組」和原因是學生私下寫給老師的，預設收起來，
+      投影或請學生幫忙看畫面時請不要打開，也請不要轉述給任何人。下載的 CSV 會含這一欄。
+      若原因提到衝突或霸凌，分組之外也值得另外了解。</div>
+    ${lonely.map(({p,list})=>list.length?
+      `<div class="note bad"><b>${p.name}：沒有被任何人點名的同學</b>（記得多關照）
+        <div class="miss">${list.map(e=>`<span>${e.seat} ${esc(e.name)}</span>`).join('')}</div></div>`:'').join('')}
+    <div class="row">
+      <button class="btn sky" data-act="csvRaw">⬇️ 下載填答原始資料</button>
+      <button class="btn sun" data-act="csvGroups">⬇️ 下載分組結果</button>
+    </div>
+    <p class="hint">CSV 以 UTF-8 BOM 輸出，Excel 或 Google 試算表開啟都不會亂碼。</p>
+  </div>`:''}`;
+}
+
+/* ============ CSV ============ */
+const csvCell=v=>{const s=String(v??'');return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
+const toCSV=rows=>'﻿'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n');
+function rawCSV(){
+  const entries=SEATS.map(s=>state.roster[s]).filter(Boolean);
+  const gmap={};
+  PARK_LIST.forEach(p=>{gmap[p.key]={};
+    buildGroups(entries,p.key,state.size).forEach((g,i)=>g.forEach(m=>gmap[p.key][m.seat]=i+1));});
+  const rows=[['座號','姓名','膽量(1-5)','喜歡的設施類型','九族想一起玩','劍湖山想一起玩','想避免同組＋原因（保密）','備註','九族分組','劍湖山分組']];
+  entries.forEach(e=>rows.push([e.seat,e.name,e.courage,
+    e.cats.map(c=>CAT_OF[c].name).join('、'),
+    e.mates.nine.map(s=>NAME_OF[s]).join('、'),
+    e.mates.jan.map(s=>NAME_OF[s]).join('、'),
+    e.avoid.map(s=>NAME_OF[s]+'：'+(e.why[s]||'（未寫原因）')).join('\n'),
+    e.note, gmap.nine[e.seat]||'', gmap.jan[e.seat]||'']));
+  STUDENTS.filter(([s])=>!state.roster[s]).forEach(([s,n])=>rows.push([s,n,'','','','','','（未填寫）','','']));
+  return toCSV(rows);
+}
+function groupsCSV(){
+  const entries=SEATS.map(s=>state.roster[s]).filter(Boolean);
+  const rows=[['樂園','組別','人數','成員','平均膽量','共同喜好類型','全組都想玩','玩伴心願達成','需老師微調','建議路線']];
+  PARK_LIST.forEach(p=>buildGroups(entries,p.key,state.size).forEach((g,i)=>{
+    const info=groupInfo(g,p.key);
+    rows.push([p.name,'第'+(i+1)+'組',g.length,g.map(m=>m.seat+' '+m.name).join('、'),
+      info.avg.toFixed(1), info.main.map(c=>CAT_OF[c].name).join('、'),
+      info.shared.map(c=>CAT_OF[c].name).join('、'),
+      (info.wishTotal?Math.round(info.wish/info.wishTotal*100):100)+'%',
+      info.clash?'有 '+info.clash+' 對希望避免同組':'',
+      info.rides.slice(0,6).map(r=>r.r.split('（')[0]).join('、')]);
+  }));
+  return toCSV(rows);
+}
+async function offerFile(filename,text){
+  try{
+    const dl=await window.claude?.use?.('downloads');
+    if(dl){await dl.save({filename,data:text});toast('已下載 '+filename);return;}
+  }catch(e){if(e&&e.code==='declined'){toast('已取消');return;}}
+  try{
+    const url=URL.createObjectURL(new Blob([text],{type:'text/csv;charset=utf-8'}));
+    const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);
+    a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);
+    toast('已下載 '+filename);
+  }catch(e){toast('下載失敗，請改用其他瀏覽器');}
+}
+
+/* ============ 繪製 ============ */
+function render(){
+  const root=document.getElementById('root');
+  root.className='wrap'+(state.view==='teacher'?' wide':'');
+  root.innerHTML=`
+  <header class="top">
+    <div class="eyebrow">${esc(CLASS_INFO.school)}　${esc(CLASS_INFO.year)}</div>
+    <h1><span class="ride">🎡</span> ${esc(CLASS_INFO.klass)} 畢旅玩伴配對</h1>
+    <p class="lede">兩個樂園、${STUDENTS.length} 個人、七種玩法。說說你敢玩什麼、想跟誰玩，這些都會成為老師排組別時的參考。老師會盡量尊重每個人的想法，讓大家玩得安心又快樂。</p>
+    <div class="parkline"><span class="parkpill n">🌿 九族文化村</span><span class="parkpill j">🎢 劍湖山世界</span></div>
+  </header>
+  ${state.view==='student'?studentView():teacherView()}
+  <footer>
+    <span>全班 ${STUDENTS.length} 人</span>
+    <button data-act="toggleView">${state.view==='student'?'老師專區 →':'← 回到填寫頁'}</button>
+  </footer>
+  ${state.toast?`<div class="toast">${esc(state.toast)}</div>`:''}`;
+}
+
+/* ============ 事件 ============ */
+document.addEventListener('click',async ev=>{
+  const b=ev.target.closest('[data-act]'); if(!b||b.tagName==='INPUT') return;
+  const a=b.dataset.act, d=state.draft;
+  const grabNote=()=>{const n=document.getElementById('noteBox'); if(n) d.note=n.value;};
+  const grabWhy=()=>{document.querySelectorAll('.whyin').forEach(t=>{d.why[Number(t.dataset.seat)]=t.value;});};
+  const grabKey=()=>{const k=document.getElementById('keyBox'); if(k) state.key=k.value.trim();};
+
+  if(a==='pickme'){d.seat=Number(b.dataset.seat);
+    d.mates.nine=d.mates.nine.filter(s=>s!==d.seat); d.mates.jan=d.mates.jan.filter(s=>s!==d.seat);
+    d.avoid=d.avoid.filter(s=>s!==d.seat); delete d.why[d.seat];
+    saveDraft();render();}
+  else if(a==='courage'){d.courage=Number(b.dataset.v);saveDraft();render();}
+  else if(a==='cat'){const id=b.dataset.id;
+    d.cats=d.cats.includes(id)?d.cats.filter(x=>x!==id):[...d.cats,id];saveDraft();render();}
+  else if(a==='mate'){const p=b.dataset.park,s=Number(b.dataset.seat);
+    d.mates[p]=d.mates[p].includes(s)?d.mates[p].filter(x=>x!==s):[...d.mates[p],s];saveDraft();render();}
+  else if(a==='avoid'){const s=Number(b.dataset.seat);
+    grabWhy();
+    if(d.avoid.includes(s)){d.avoid=d.avoid.filter(x=>x!==s);delete d.why[s];}
+    else d.avoid=[...d.avoid,s];
+    saveDraft();render();}
+  else if(a==='whyfill'){grabWhy();d.why[Number(b.dataset.seat)]=b.dataset.text;saveDraft();render();}
+  else if(a==='next'){grabNote();grabWhy();state.step=Math.min(6,state.step+1);saveDraft();render();scrollTop();}
+  else if(a==='back'){grabNote();grabWhy();state.step=Math.max(0,state.step-1);saveDraft();render();scrollTop();}
+  else if(a==='submit'){
+    grabNote();
+    if(!d.seat||!d.cats.length){toast('請先選名字和至少一種設施類型');return;}
+    state.sending=true;render();
+    const payload={seat:d.seat,name:NAME_OF[d.seat],courage:d.courage,cats:d.cats.slice(),
+      nine:d.mates.nine.slice(),jan:d.mates.jan.slice(),
+      avoid:d.avoid.slice(), avoidWhy:d.avoid.map(s=>String(d.why[s]||'').replace(/[|]/g,'／').trim().slice(0,60)),
+      note:(d.note||'').slice(0,80),ts:new Date().toISOString()};
+    try{
+      await sendAnswer(payload);
+      state.sent=normalise(payload); lsSet(LS_SENT,state.sent);
+      state.sending=false; render(); scrollTop();
+    }catch(err){
+      state.sending=false; render();
+      toast('送出失敗，請確認網路後再按一次');
+    }
+  }
+  else if(a==='redo'){state.sent=null;lsSet(LS_SENT,null);state.step=0;render();scrollTop();}
+  else if(a==='toggleView'){
+    state.view=state.view==='student'?'teacher':'student';
+    render();scrollTop();
+    if(state.view==='teacher'&&!DEMO&&state.key) loadRoster();
+  }
+  else if(a==='size'){state.size=Number(b.dataset.n);render();}
+  else if(a==='togglePrivate'){state.showPrivate=!state.showPrivate;render();}
+  else if(a==='reload'){grabKey(); if(!state.key){toast('請先輸入老師密碼');return;} loadRoster();}
+  else if(a==='clear'){
+    if(b.dataset.sure){state.roster={};lsSet(LS_CACHE,{});render();toast('已清空畫面資料（雲端資料不受影響）');}
+    else{b.dataset.sure='1';b.textContent='再按一次確認';
+      setTimeout(()=>{if(b.isConnected){delete b.dataset.sure;b.textContent='清空目前畫面資料';}},4000);}
+  }
+  else if(a==='csvRaw'){offerFile(`${CLASS_INFO.klass}_玩伴調查_原始資料.csv`,rawCSV());}
+  else if(a==='csvGroups'){offerFile(`${CLASS_INFO.klass}_玩伴分組結果.csv`,groupsCSV());}
+});
+document.addEventListener('change',ev=>{
+  if(ev.target.dataset && ev.target.dataset.act==='importcsv'){
+    const f=ev.target.files&&ev.target.files[0]; if(!f) return;
+    const fr=new FileReader();
+    fr.onload=()=>{
+      const rows=parseCSV(String(fr.result));
+      if(!rows.length){toast('檔案是空的');return;}
+      const head=rows[0].map(h=>h.trim());
+      const col=n=>head.indexOf(n);
+      const iSeat=col('座號'),iC=col('膽量'),iCat=col('喜歡類型'),iN=col('九族玩伴'),iJ=col('劍湖山玩伴'),
+            iA=col('避免同組'),iW=col('原因'),iNote=col('備註');
+      if(iSeat<0){toast('找不到「座號」欄，請確認是試算表匯出的 CSV');return;}
+      let n=0;
+      rows.slice(1).forEach(r=>{
+        const e=normalise({seat:r[iSeat],courage:r[iC],
+          cats:String(r[iCat]||'').split('|').filter(Boolean),
+          nine:String(r[iN]||'').split('|').filter(Boolean),
+          jan:String(r[iJ]||'').split('|').filter(Boolean),
+          avoid:String(iA>=0?r[iA]||'':'').split('|').filter(Boolean),
+          avoidWhy:String(iW>=0?r[iW]||'':'').split('|'), note:r[iNote]||''});
+        if(e){state.roster[e.seat]=e;n++;}
+      });
+      lsSet(LS_CACHE,state.roster);
+      toast(n?`匯入 ${n} 筆`:'沒有可用的資料列');
+    };
+    fr.readAsText(f,'utf-8');
+    ev.target.value='';
+  }
+});
+document.addEventListener('input',e=>{
+  if(e.target.id==='noteBox'){state.draft.note=e.target.value;saveDraft();}
+  if(e.target.id==='keyBox'){state.key=e.target.value.trim();}
+  if(e.target.classList && e.target.classList.contains('whyin')){
+    state.draft.why[Number(e.target.dataset.seat)]=e.target.value; saveDraft();
+    // 不重繪（會失焦），直接切換「下一步」的狀態
+    const ok=state.draft.avoid.every(s=>String(state.draft.why[s]||'').trim().length>=2);
+    const nx=document.querySelector('[data-act="next"]'); if(nx) nx.disabled=!ok;
+    const warn=document.querySelector('.note.bad'); if(warn) warn.hidden=ok;
+  }
+});
+function scrollTop(){try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){window.scrollTo(0,0);}}
+
+render();
+</script>
+</body>
+</html>
