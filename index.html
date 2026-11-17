@@ -422,25 +422,27 @@ const COURAGE_FACES=[
 
 /* ============ 配對演算法 ============ */
 const APART=(a,b)=>(a.avoid||[]).includes(b.seat)||(b.avoid||[]).includes(a.seat);
-/* 評分＝「想一起玩」×100 ＋「設施類型與膽量」
-   ① 不想同組：直接判出局（-1000000），任何分組都不能有
-   ② 想一起玩：互選 30、單向 12（×100 後一定壓過所有類型分數的總和）
-   ③ 設施類型重疊：最高 6　④ 膽量接近：最高 2（只在想一起玩相同時才分高下） */
+/* 評分採「層級制」，上一層永遠壓過下一層：
+   ① 不想同組：-10億，任何分組都不能有
+   ② 互相點名的兩人同組：每對 +100萬
+   ③ 每個人組裡至少有一位自己點名的人：每人 +1萬（在 groupScore 裡算）
+   ④ 單方面點名的兩人同組：每對 +300
+   ⑤ 設施類型重疊最高 +6、膽量接近最高 +2 */
 const PS_CACHE=new WeakMap();
 function pairScore(a,b,park){
   let m=PS_CACHE.get(a); if(!m){m=new Map();PS_CACHE.set(a,m);}
   const key=park+b.seat;
   if(m.has(key)) return m.get(key);
   let s;
-  if(APART(a,b)) s=-1000000;
+  if(APART(a,b)) s=-1000000000;
   else{
     const aw=(a.mates[park]||[]).includes(b.seat), bw=(b.mates[park]||[]).includes(a.seat);
-    const W=(aw&&bw)?30:((aw||bw)?12:0);
+    const W=(aw&&bw)?1000000:((aw||bw)?300:0);
     const A=new Set(a.cats), B=new Set(b.cats);
     let inter=0; A.forEach(x=>{if(B.has(x))inter++});
     const uni=new Set([...a.cats,...b.cats]).size||1;
     const C=6*(inter/uni)+2*(1-Math.abs(a.courage-b.courage)/4);
-    s=W*100+C;
+    s=W+C;
   }
   m.set(key,s); return s;
 }
@@ -464,7 +466,7 @@ function leaderRank(m,g,park,all){
 const withLeader=(g,park,all)=>g.slice().sort((a,b)=>leaderRank(b,g,park,all)-leaderRank(a,g,park,all));
 
 /* 彈性分組：從最合得來的兩人開始長；要長大必須「有人想一起玩」，光靠設施類型不會長 */
-const FLEX_FLOOR=100;
+const FLEX_FLOOR=50;
 function buildFlexible(list,park){
   const pool=list.slice(), groups=[];
   while(pool.length>=GMIN){
@@ -536,7 +538,7 @@ const clashCount=gs=>gs.reduce((t,g)=>{let c=0;
   for(let i=0;i<g.length;i++)for(let j=i+1;j<g.length;j++) if(APART(g[i],g[j]))c++;return t+c;},0);
 /* 一組的分數＝兩兩配對分數加總＋「每個人組裡至少有一位自己想要的人」的大獎勵
    這樣會先確保每個人都有喜歡的人在身邊，再去追求更多互選、最後才看設施類型 */
-const HAS_FRIEND=5000;
+const HAS_FRIEND=10000;
 const groupScore=(g,park)=>{let s=0;
   for(let i=0;i<g.length;i++){
     for(let j=i+1;j<g.length;j++) s+=pairScore(g[i],g[j],park);
@@ -709,7 +711,7 @@ state.sent = lsGet(LS_SENT,null);
 state.key  = lsGet(LS_KEY, CONFIG.teacherKey||'');
 state.roster = {};            // 鎖定時不帶任何資料，解鎖後才載入
 // 分組規則改版時，舊的分組自動作廢重算
-const ALGO_VERSION=4;
+const ALGO_VERSION=5;
 state.groups=(lsGet('pm_algo',0)===ALGO_VERSION)
   ? Object.assign({nine:null,jan:null}, lsGet(LS_GROUPS,{}))
   : {nine:null,jan:null};
