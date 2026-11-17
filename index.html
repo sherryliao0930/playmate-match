@@ -252,6 +252,11 @@ textarea,input[type=text],input[type=password],input[type=url]{width:100%;font:i
   margin-top:4px}
 .leadsel select{flex:1;min-width:0;font:inherit;font-size:.85rem;font-weight:500;color:var(--ink);
   background:var(--surface-2);border:2px solid var(--line);border-radius:9px;padding:4px 8px}
+.lock{max-width:460px;margin:30px auto 0;text-align:center}
+.lock .lockemo{font-size:3.2rem;line-height:1}
+.lock h2.q{margin-top:8px}
+.lock input{text-align:center;letter-spacing:.14em;max-width:280px;margin-inline:auto}
+.lock .hint{text-align:center}
 .movebar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;
   background:#EFE9FF;border:2.5px solid var(--line);border-radius:13px;padding:9px 14px;font-size:.9rem}
 :root[data-theme="dark"] .movebar{background:#3A2F63}
@@ -608,7 +613,7 @@ let state={
   draft:{seat:null,courage:3,cats:[],mates:{nine:[],jan:[]},avoid:[],why:{},note:''},
   sent:null,
   roster:{},                       // seat -> entry（老師端）
-  key:'', loading:false, loadErr:'', showPrivate:false,
+  key:'', unlocked:false, loading:false, loadErr:'', showPrivate:false,
   size:'flex', groups:{nine:null,jan:null}, move:null, toast:null
 };
 function lsGet(k,fb){try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch(e){return fb;}}
@@ -619,7 +624,7 @@ if(!Array.isArray(state.draft.avoid)) state.draft.avoid=[];
 if(!state.draft.why || typeof state.draft.why!=='object') state.draft.why={};
 state.sent = lsGet(LS_SENT,null);
 state.key  = lsGet(LS_KEY, CONFIG.teacherKey||'');
-state.roster = lsGet(LS_CACHE,{});
+state.roster = {};            // 鎖定時不帶任何資料，解鎖後才載入
 state.groups=Object.assign({nine:null,jan:null}, lsGet(LS_GROUPS,{}));
 const saveDraft=()=>lsSet(LS_DRAFT,state.draft);
 const saveGroups=()=>lsSet(LS_GROUPS,state.groups);
@@ -655,6 +660,41 @@ async function sendAnswer(payload){
   let data={}; try{data=await res.json();}catch(e){}
   if(data && data.ok===false) throw new Error(data.error||'伺服器回報失敗');
   return {ok:true};
+}
+/* 進入老師專區前先驗證密碼 */
+async function unlock(key){
+  if(!key){state.loadErr='請輸入密碼';render();return;}
+  if(DEMO){ state.key=key; state.unlocked=true; state.loadErr=''; lsSet(LS_KEY,key);
+    state.roster=lsGet(LS_CACHE,{}); render(); return; }
+  state.loading=true; state.loadErr=''; render();
+  try{
+    const url=CONFIG.endpoint+(CONFIG.endpoint.includes('?')?'&':'?')+
+      'action=list&key='+encodeURIComponent(key);
+    const res=await fetch(url);
+    const data=await res.json();
+    if(!data.ok) throw new Error(data.error==='bad key'?'密碼不對，再試一次':(data.error||'讀取失敗'));
+    const next={};
+    (data.rows||[]).forEach(r=>{const e=normalise(r); if(e) next[e.seat]=e;});
+    state.roster=next; lsSet(LS_CACHE,next);
+    state.key=key; lsSet(LS_KEY,key); state.unlocked=true;
+  }catch(err){ state.loadErr=String(err.message||err); }
+  state.loading=false; render();
+}
+function lockScreen(){
+  return `<div class="card lock">
+    <div class="lockemo">🔒</div>
+    <h2 class="q">老師專區</h2>
+    <p class="hint">這裡會看到全班的填答內容與分組，<b>請輸入老師密碼</b>才能進入。</p>
+    <input type="password" id="lockBox" placeholder="老師密碼" autocomplete="off"
+      ${state.loading?'disabled':''}>
+    ${state.loadErr?`<div class="note bad">${esc(state.loadErr)}</div>`:''}
+    <div class="row" style="justify-content:center">
+      <button class="btn go" data-act="unlock" ${state.loading?'disabled':''}>
+        ${state.loading?'驗證中⋯':'🔑 進入'}</button>
+      <button class="btn ghost" data-act="toggleView">← 回到填寫頁</button>
+    </div>
+    <p class="hint" style="margin-top:14px">密碼就是你在 Apps Script 裡設定的 <code>TEACHER_KEY</code>。</p>
+  </div>`;
 }
 async function loadRoster(){
   if(DEMO){ state.roster=lsGet(LS_CACHE,{}); return; }
@@ -827,6 +867,7 @@ function doneCard(){
 
 /* ============ 老師頁 ============ */
 function teacherView(){
+  if(!state.unlocked) return lockScreen();
   const entries=SEATS.map(s=>state.roster[s]).filter(Boolean);
   const done=entries.length, total=STUDENTS.length;
   const missing=STUDENTS.filter(([s])=>!state.roster[s]);
@@ -895,9 +936,8 @@ function teacherView(){
     ${DEMO?`<div class="note warn"><b>示範模式</b>：還沒填 <code>CONFIG.endpoint</code>，學生送出的答案只會留在他們自己的裝置上。
       請依 README 部署 Google Apps Script 後，把網址填進 <code>index.html</code> 最上面的設定區。</div>`:`
     <div class="row" style="margin-top:12px">
-      <input type="password" id="keyBox" placeholder="老師密碼" value="${esc(state.key)}"
-        style="margin-top:0;max-width:220px">
       <button class="btn sky sm" data-act="reload" ${state.loading?'disabled':''}>${state.loading?'讀取中⋯':'↻ 讀取最新回覆'}</button>
+      <button class="btn ghost sm" data-act="lock">🔒 鎖定離開</button>
     </div>
     ${state.loadErr?`<div class="note bad"><b>讀不到資料：</b>${esc(state.loadErr)}</div>`:''}`}
 
@@ -1238,7 +1278,6 @@ document.addEventListener('click',async ev=>{
   const a=b.dataset.act, d=state.draft;
   const grabNote=()=>{const n=document.getElementById('noteBox'); if(n) d.note=n.value;};
   const grabWhy=()=>{document.querySelectorAll('.whyin').forEach(t=>{d.why[Number(t.dataset.seat)]=t.value;});};
-  const grabKey=()=>{const k=document.getElementById('keyBox'); if(k) state.key=k.value.trim();};
 
   if(a==='pickme'){d.seat=Number(b.dataset.seat);
     d.mates.nine=d.mates.nine.filter(s=>s!==d.seat); d.mates.jan=d.mates.jan.filter(s=>s!==d.seat);
@@ -1277,8 +1316,19 @@ document.addEventListener('click',async ev=>{
   else if(a==='redo'){state.sent=null;lsSet(LS_SENT,null);state.step=0;render();scrollTop();}
   else if(a==='toggleView'){
     state.view=state.view==='student'?'teacher':'student';
-    render();scrollTop();
-    if(state.view==='teacher'&&!DEMO&&state.key) loadRoster();
+    state.loadErr=''; render(); scrollTop();
+    if(state.view==='teacher'&&!state.unlocked)
+      setTimeout(()=>{const el=document.getElementById('lockBox'); if(el) el.focus();},60);
+  }
+  else if(a==='unlock'){
+    const el=document.getElementById('lockBox');
+    await unlock(el?el.value.trim():'');
+    if(state.unlocked) scrollTop();
+  }
+  else if(a==='lock'){
+    state.unlocked=false; state.roster={}; state.showPrivate=false; state.move=null;
+    state.view='student'; state.loadErr=''; lsSet(LS_CACHE,{}); render(); scrollTop();
+    toast('已鎖定老師專區');
   }
   else if(a==='size'){const n=b.dataset.n;state.size=(n==='flex'?'flex':Number(n));
     state.groups={nine:null,jan:null};state.move=null;saveGroups();render();}
@@ -1304,7 +1354,7 @@ document.addEventListener('click',async ev=>{
   else if(a==='delgroup'){const p=b.dataset.park,gi=Number(b.dataset.gi);
     if(state.groups[p]&&!state.groups[p][gi].length){state.groups[p].splice(gi,1);saveGroups();render();}}
   else if(a==='poster'){downloadPoster(b.dataset.park);}
-  else if(a==='reload'){grabKey(); if(!state.key){toast('請先輸入老師密碼');return;} loadRoster();}
+  else if(a==='reload'){ if(!state.key){toast('請先輸入老師密碼');return;} loadRoster();}
   else if(a==='clear'){
     if(b.dataset.sure){state.roster={};lsSet(LS_CACHE,{});render();toast('已清空畫面資料（雲端資料不受影響）');}
     else{b.dataset.sure='1';b.textContent='再按一次確認';
@@ -1354,13 +1404,20 @@ document.addEventListener('change',ev=>{
 });
 document.addEventListener('input',e=>{
   if(e.target.id==='noteBox'){state.draft.note=e.target.value;saveDraft();}
-  if(e.target.id==='keyBox'){state.key=e.target.value.trim();}
+  if(e.target.id==='lockBox'&&state.loadErr){state.loadErr='';
+    const n=document.querySelector('.lock .note.bad'); if(n) n.remove();}
   if(e.target.classList && e.target.classList.contains('whyin')){
     state.draft.why[Number(e.target.dataset.seat)]=e.target.value; saveDraft();
     // 不重繪（會失焦），直接切換「下一步」的狀態
     const ok=state.draft.avoid.every(s=>String(state.draft.why[s]||'').trim().length>=2);
     const nx=document.querySelector('[data-act="next"]'); if(nx) nx.disabled=!ok;
     const warn=document.querySelector('.note.bad'); if(warn) warn.hidden=ok;
+  }
+});
+document.addEventListener('keydown',async e=>{
+  if(e.key==='Enter'&&e.target&&e.target.id==='lockBox'){
+    e.preventDefault(); await unlock(e.target.value.trim());
+    if(state.unlocked) scrollTop();
   }
 });
 function scrollTop(){try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){window.scrollTo(0,0);}}
