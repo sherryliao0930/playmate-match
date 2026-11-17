@@ -487,8 +487,45 @@ function buildFlexible(list,park){
   });
   return groups;
 }
+/* 收尾修復：還排在一起的「避免同組」，試著互換或移走化解 */
+function hasClash(g){
+  for(let i=0;i<g.length;i++)for(let j=i+1;j<g.length;j++) if(APART(g[i],g[j])) return true;
+  return false;
+}
+function repairClashes(gs){
+  for(let pass=0;pass<6;pass++){
+    let changed=false;
+    for(let i=0;i<gs.length&&!changed;i++){
+      if(!hasClash(gs[i])) continue;
+      for(let x=0;x<gs[i].length&&!changed;x++){
+        const m=gs[i][x];
+        if(!gs[i].some((o,k)=>k!==x&&APART(o,m))) continue;   // 這個人本身沒衝突
+        const rest=gs[i].filter((_,k)=>k!==x);
+        // ① 先試著把他直接移到不衝突、又還有空位的組
+        for(let j=0;j<gs.length&&!changed;j++){
+          if(j===i||gs[j].length>=GMAX||rest.length<GMIN) continue;
+          if(!hasClash(gs[j].concat(m))&&!hasClash(rest)){
+            gs[i]=rest; gs[j]=gs[j].concat(m); changed=true;
+          }
+        }
+        // ② 不行就跟別組的人交換
+        for(let j=0;j<gs.length&&!changed;j++){
+          if(j===i) continue;
+          for(let y=0;y<gs[j].length;y++){
+            const n=gs[j][y];
+            const gi=rest.concat(n), gj=gs[j].filter((_,k)=>k!==y).concat(m);
+            if(!hasClash(gi)&&!hasClash(gj)){ gs[i]=gi; gs[j]=gj; changed=true; break; }
+          }
+        }
+      }
+    }
+    if(!changed) break;
+  }
+  return gs.filter(g=>g.length);
+}
 function buildGroups(list,park,pref){
-  if(pref==='flex') return buildFlexible(list,park).map(g=>withLeader(g,park,list));
+  if(pref==='flex')
+    return repairClashes(buildFlexible(list,park)).map(g=>withLeader(g,park,list));
   const pool=list.slice();
   const groups=[];
   targetSizes(pool.length,pref).forEach(sz=>{
@@ -518,7 +555,7 @@ function buildGroups(list,park,pref){
       if(avg>bs){bs=avg;best=i;}});
     if(best<0) groups.push([p]); else groups[best].push(p);
   });
-  return groups.map(g=>withLeader(g,park,list));
+  return repairClashes(groups).map(g=>withLeader(g,park,list));
 }
 /* 以座號保存分組，讓老師的手動調整可以留著。每組第一位就是組長。 */
 function ensureGroups(park,entries){
